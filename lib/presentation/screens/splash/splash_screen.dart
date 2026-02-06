@@ -1,31 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:go_router/go_router.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/typography.dart';
-import '../../../router/app_router.dart';
+import '../../../data/providers/auth_provider.dart';
 
-class SplashScreen extends StatefulWidget {
+class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
 
   @override
-  State<SplashScreen> createState() => _SplashScreenState();
+  ConsumerState<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> {
+class _SplashScreenState extends ConsumerState<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    _navigateAfterDelay();
+    _checkAuth();
   }
 
-  Future<void> _navigateAfterDelay() async {
-    await Future.delayed(const Duration(milliseconds: 2500));
-    if (mounted) {
-      // TODO: Check auth state and navigate accordingly
-      context.go(AppRoutes.login);
-    }
+  Future<void> _checkAuth() async {
+    // Small delay for splash animation
+    await Future.delayed(const Duration(milliseconds: 1500));
+    if (!mounted) return;
+    // This triggers router redirect via auth state change
+    await ref.read(authProvider.notifier).tryRestoreSession();
   }
 
   @override
@@ -36,7 +36,6 @@ class _SplashScreenState extends State<SplashScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Logo/Icon placeholder
             Container(
               width: 120,
               height: 120,
@@ -58,7 +57,6 @@ class _SplashScreenState extends State<SplashScreen> {
                 .fadeIn(duration: 600.ms)
                 .scale(begin: const Offset(0.8, 0.8), end: const Offset(1, 1)),
             const SizedBox(height: 24),
-            // App name
             Text(
               'Bingoals',
               style: AppTypography.displayMedium.copyWith(
@@ -69,7 +67,6 @@ class _SplashScreenState extends State<SplashScreen> {
                 .fadeIn(duration: 600.ms)
                 .slideY(begin: 0.3, end: 0),
             const SizedBox(height: 8),
-            // Tagline
             Text(
               'Track your goals, celebrate your wins',
               style: AppTypography.bodyMedium.copyWith(
@@ -77,7 +74,6 @@ class _SplashScreenState extends State<SplashScreen> {
               ),
             ).animate(delay: 500.ms).fadeIn(duration: 600.ms),
             const SizedBox(height: 48),
-            // Loading indicator
             SizedBox(
               width: 24,
               height: 24,

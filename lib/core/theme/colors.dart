@@ -1,51 +1,77 @@
 import 'package:flutter/material.dart';
 
-/// Golden Memories color palette - matching the web app theme
+/// Bingoals color palette - black & white focus shade
 class AppColors {
   AppColors._();
 
-  // Primary colors
-  static const Color gold = Color(0xFFD4A853);
-  static const Color goldLight = Color(0xFFE5C77A);
-  static const Color goldDark = Color(0xFFB8923F);
+  // ============== PRIMARY (Black & White) ==============
 
-  // Background colors
-  static const Color background = Color(0xFFFAF8F5);
-  static const Color backgroundDark = Color(0xFF1A1814);
-  static const Color surface = Color(0xFFFFFFFF);
-  static const Color surfaceDark = Color(0xFF2A2520);
+  static const Color gold = Color(0xFF1A1A1A);       // Primary accent (black)
+  static const Color goldLight = Color(0xFF404040);   // Lighter shade
+  static const Color goldDark = Color(0xFF000000);    // Darkest shade
 
-  // Text colors
-  static const Color textPrimary = Color(0xFF1A1814);
-  static const Color textSecondary = Color(0xFF6B6560);
-  static const Color textMuted = Color(0xFF9A9590);
-  static const Color textOnDark = Color(0xFFFAF8F5);
+  // ============== LIGHT THEME ==============
+
+  static const Color backgroundLight = Color(0xFFFAFAFA);
+  static const Color surfaceLight = Color(0xFFFFFFFF);
+
+  static const Color textPrimaryLight = Color(0xFF171717);
+  static const Color textSecondaryLight = Color(0xFF525252);
+  static const Color textMutedLight = Color(0xFF737373);
+
+  // ============== DARK THEME ==============
+
+  static const Color backgroundDark = Color(0xFF0A0A0A);
+  static const Color surfaceDark = Color(0xFF171717);
+
+  static const Color textPrimaryDark = Color(0xFFFAFAFA);
+  static const Color textSecondaryDark = Color(0xFFA3A3A3);
+  static const Color textMutedDark = Color(0xFF737373);
+
+  // ============== SHARED COLORS ==============
 
   // Accent colors
-  static const Color rose = Color(0xFFC4918E);
-  static const Color roseLight = Color(0xFFD4A5A2);
-  static const Color cream = Color(0xFFFAF8F5);
+  static const Color rose = Color(0xFF525252);
+  static const Color roseLight = Color(0xFF737373);
+  static const Color cream = Color(0xFFFAFAFA);
 
   // Status colors
-  static const Color success = Color(0xFF4CAF50);
-  static const Color warning = Color(0xFFFF9800);
-  static const Color error = Color(0xFFE53935);
+  static const Color success = Color(0xFF22C55E);
+  static const Color warning = Color(0xFFF59E0B);
+  static const Color error = Color(0xFFEF4444);
+
+  // Grid colors
+  static const Color bingoHeader = Color(0xFF171717);
+  static const Color bingoHeaderText = Color(0xFFFFFFFF);
+  static const Color bingoCell = Color(0xFFFFFFFF);
+  static const Color bingoCellBorder = Color(0xFFD4D4D4);
+  static const Color bingoCellDashed = Color(0xFFA3A3A3);
 
   // Card and border colors
-  static const Color cardBorder = Color(0xFFE8E4E0);
-  static const Color divider = Color(0xFFE8E4E0);
+  static const Color cardBorderLight = Color(0xFFE5E5E5);
+  static const Color cardBorderDark = Color(0xFF262626);
+  static const Color divider = Color(0xFFE5E5E5);
 
-  // Progress ring gradient
+  // Progress ring gradient (grayscale)
   static const List<Color> progressGradient = [
-    Color(0xFFD4A853),
-    Color(0xFFE5C77A),
+    Color(0xFF171717),
+    Color(0xFF404040),
   ];
 
-  // Confetti colors
+  // Confetti colors (grayscale range)
   static const List<Color> confettiColors = [
-    Color(0xFFD4A853),
-    Color(0xFFC4918E),
-    Color(0xFFE5C77A),
-    Color(0xFFB8923F),
+    Color(0xFF171717),
+    Color(0xFF404040),
+    Color(0xFF737373),
+    Color(0xFFA3A3A3),
   ];
+
+  // ============== ALIASES ==============
+  static const Color background = backgroundLight;
+  static const Color surface = surfaceLight;
+  static const Color textPrimary = textPrimaryLight;
+  static const Color textSecondary = textSecondaryLight;
+  static const Color textMuted = textMutedLight;
+  static const Color textOnDark = textPrimaryDark;
+  static const Color cardBorder = cardBorderLight;
 }

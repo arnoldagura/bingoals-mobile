@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/typography.dart';
+import '../../../data/providers/auth_provider.dart';
 import '../../../router/app_router.dart';
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -44,7 +46,7 @@ class SettingsScreen extends StatelessWidget {
               _SettingsTile(
                 icon: Icons.person_outline,
                 title: 'Profile',
-                subtitle: 'user@example.com',
+                subtitle: ref.watch(authProvider).user?.email ?? '',
                 onTap: () {
                   // TODO: Show profile
                 },
@@ -53,9 +55,11 @@ class SettingsScreen extends StatelessWidget {
                 icon: Icons.logout,
                 title: 'Sign Out',
                 subtitle: 'Sign out of your account',
-                onTap: () {
-                  // TODO: Sign out
-                  context.go(AppRoutes.login);
+                onTap: () async {
+                  await ref.read(authProvider.notifier).logout();
+                  if (context.mounted) {
+                    context.go(AppRoutes.login);
+                  }
                 },
                 isDestructive: true,
               ),

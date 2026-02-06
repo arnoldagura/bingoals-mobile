@@ -8,14 +8,15 @@ import '../../../core/theme/typography.dart';
 import '../../../data/providers/auth_provider.dart';
 import '../../../router/app_router.dart';
 
-class LoginScreen extends ConsumerStatefulWidget {
-  const LoginScreen({super.key});
+class RegisterScreen extends ConsumerStatefulWidget {
+  const RegisterScreen({super.key});
 
   @override
-  ConsumerState<LoginScreen> createState() => _LoginScreenState();
+  ConsumerState<RegisterScreen> createState() => _RegisterScreenState();
 }
 
-class _LoginScreenState extends ConsumerState<LoginScreen> {
+class _RegisterScreenState extends ConsumerState<RegisterScreen> {
+  final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
@@ -23,15 +24,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   void dispose() {
+    _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
-  Future<void> _login() async {
+  Future<void> _register() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final success = await ref.read(authProvider.notifier).login(
+    final success = await ref.read(authProvider.notifier).register(
+          name: _nameController.text.trim(),
           email: _emailController.text.trim(),
           password: _passwordController.text,
         );
@@ -55,45 +58,40 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const SizedBox(height: 60),
-                // Logo
-                Center(
-                  child: Container(
-                    width: 100,
-                    height: 100,
-                    decoration: BoxDecoration(
-                      color: AppColors.gold.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: AppColors.gold.withValues(alpha: 0.3),
-                        width: 2,
-                      ),
-                    ),
-                    child: const Icon(
-                      Icons.grid_view_rounded,
-                      size: 48,
-                      color: AppColors.gold,
-                    ),
-                  ).animate().fadeIn(duration: 600.ms).scale(
-                        begin: const Offset(0.8, 0.8),
-                        end: const Offset(1, 1),
-                      ),
-                ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 40),
+                // Header
                 Text(
-                  'Welcome Back',
+                  'Create Account',
                   style: AppTypography.headlineLarge,
                   textAlign: TextAlign.center,
-                ).animate(delay: 200.ms).fadeIn(),
+                ).animate().fadeIn(duration: 400.ms),
                 const SizedBox(height: 8),
                 Text(
-                  'Sign in to continue tracking your goals',
+                  'Start tracking your goals',
                   style: AppTypography.bodyMedium.copyWith(
                     color: AppColors.textSecondary,
                   ),
                   textAlign: TextAlign.center,
-                ).animate(delay: 300.ms).fadeIn(),
+                ).animate(delay: 200.ms).fadeIn(),
                 const SizedBox(height: 40),
+
+                // Name field
+                TextFormField(
+                  controller: _nameController,
+                  textInputAction: TextInputAction.next,
+                  decoration: const InputDecoration(
+                    labelText: 'Name',
+                    hintText: 'Your name',
+                    prefixIcon: Icon(Icons.person_outline),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Name is required';
+                    }
+                    return null;
+                  },
+                ).animate(delay: 300.ms).fadeIn().slideY(begin: 0.2, end: 0),
+                const SizedBox(height: 16),
 
                 // Email field
                 TextFormField(
@@ -122,9 +120,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   controller: _passwordController,
                   obscureText: _obscurePassword,
                   textInputAction: TextInputAction.done,
-                  onFieldSubmitted: (_) => _login(),
+                  onFieldSubmitted: (_) => _register(),
                   decoration: InputDecoration(
                     labelText: 'Password',
+                    hintText: 'Min 6 characters',
                     prefixIcon: const Icon(Icons.lock_outline),
                     suffixIcon: IconButton(
                       icon: Icon(
@@ -141,14 +140,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     if (value == null || value.isEmpty) {
                       return 'Password is required';
                     }
+                    if (value.length < 6) {
+                      return 'Password must be at least 6 characters';
+                    }
                     return null;
                   },
                 ).animate(delay: 500.ms).fadeIn().slideY(begin: 0.2, end: 0),
+                const SizedBox(height: 8),
 
                 // Error message
                 if (authState.error != null)
                   Padding(
-                    padding: const EdgeInsets.only(top: 12),
+                    padding: const EdgeInsets.only(top: 8),
                     child: Text(
                       authState.error!,
                       style: AppTypography.bodySmall.copyWith(
@@ -159,36 +162,36 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                 const SizedBox(height: 24),
 
-                // Login button
+                // Register button
                 SizedBox(
                   height: 50,
                   child: ElevatedButton(
-                    onPressed: authState.isLoading ? null : _login,
+                    onPressed: authState.isLoading ? null : _register,
                     child: authState.isLoading
                         ? const SizedBox(
                             width: 20,
                             height: 20,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : const Text('Sign In'),
+                        : const Text('Create Account'),
                   ),
                 ).animate(delay: 600.ms).fadeIn(),
                 const SizedBox(height: 16),
 
-                // Register link
+                // Login link
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      "Don't have an account? ",
+                      'Already have an account? ',
                       style: AppTypography.bodySmall.copyWith(
                         color: AppColors.textSecondary,
                       ),
                     ),
                     GestureDetector(
-                      onTap: () => context.go(AppRoutes.register),
+                      onTap: () => context.go(AppRoutes.login),
                       child: Text(
-                        'Sign Up',
+                        'Sign In',
                         style: AppTypography.bodySmall.copyWith(
                           color: AppColors.gold,
                           fontWeight: FontWeight.w600,

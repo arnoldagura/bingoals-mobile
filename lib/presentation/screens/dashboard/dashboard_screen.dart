@@ -1,192 +1,344 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/theme/colors.dart';
 import '../../../core/theme/typography.dart';
 import '../../../core/utils/helpers.dart';
-import '../../../router/app_router.dart';
+import '../../../data/providers/auth_provider.dart';
+import '../../../data/providers/boards_provider.dart';
+import '../../widgets/common/glass_card.dart';
+import '../../widgets/common/gradient_mesh_background.dart';
+import '../../widgets/dashboard/board_card.dart';
+import '../../widgets/dashboard/dashboard_stats.dart';
 
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: Text(
-          '${Helpers.currentYear} Goals',
-          style: AppTypography.headlineMedium,
+  ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+  final _newBoardController = TextEditingController();
+
+  @override
+  void dispose() {
+    _newBoardController.dispose();
+    super.dispose();
+  }
+
+  void _showCreateBoardDialog() {
+    _newBoardController.clear();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Create New Board'),
+        content: TextField(
+          controller: _newBoardController,
+          autofocus: true,
+          decoration: const InputDecoration(
+            hintText: 'e.g., Career Goals 2026',
+            labelText: 'Board Name',
+          ),
+          onSubmitted: (_) => _createBoard(),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.view_agenda_outlined),
-            onPressed: () => context.push(AppRoutes.visionBoard),
-            tooltip: 'Vision Board',
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
           ),
-          IconButton(
-            icon: const Icon(Icons.settings_outlined),
-            onPressed: () => context.push(AppRoutes.settings),
-            tooltip: 'Settings',
+          ElevatedButton(
+            onPressed: _createBoard,
+            child: const Text('Create'),
           ),
         ],
+      ),
+    );
+  }
+
+  Future<void> _createBoard() async {
+    final title = _newBoardController.text.trim();
+    if (title.isEmpty) return;
+
+    Navigator.pop(context);
+    await ref.read(boardActionsProvider).createBoard(title);
+  }
+
+  void _showRenameDialog(String boardId, String currentTitle) {
+    _newBoardController.text = currentTitle;
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Rename Board'),
+        content: TextField(
+          controller: _newBoardController,
+          autofocus: true,
+          decoration: const InputDecoration(
+            labelText: 'Board Name',
+          ),
+          onSubmitted: (_) async {
+            final newTitle = _newBoardController.text.trim();
+            if (newTitle.isNotEmpty) {
+              Navigator.pop(context);
+              await ref
+                  .read(boardActionsProvider)
+                  .renameBoard(boardId, newTitle);
+            }
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final newTitle = _newBoardController.text.trim();
+              if (newTitle.isNotEmpty) {
+                Navigator.pop(context);
+                await ref
+                    .read(boardActionsProvider)
+                    .renameBoard(boardId, newTitle);
+              }
+            },
+            child: const Text('Rename'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmDelete(String boardId) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Board?'),
+        content: const Text(
+          'This action cannot be undone. All goals in this board will be deleted.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+            onPressed: () async {
+              Navigator.pop(context);
+              await ref.read(boardActionsProvider).deleteBoard(boardId);
+            },
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final stats = ref.watch(dashboardStatsProvider);
+    final boardsAsync = ref.watch(boardSummariesProvider);
+    final authState = ref.watch(authProvider);
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return GradientMeshScaffold(
+      floatingActionButton: FloatingActionButton.extended(
+        backgroundColor: colorScheme.primary,
+        onPressed: _showCreateBoardDialog,
+        icon: const Icon(Icons.add),
+        foregroundColor: Colors.white,
+        label: const Text('New Board'),
       ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            children: [
-              // Stats row
-              _StatsRow(),
-              const SizedBox(height: 24),
-              // Bingo Grid placeholder
-              Expanded(
-                child: _BingoGridPlaceholder(),
+        child: CustomScrollView(
+          slivers: [
+            // Header
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            authState.user != null
+                                ? 'Welcome, ${authState.user!.name.isNotEmpty ? authState.user!.name : 'back'}'
+                                : 'Welcome back',
+                            style: AppTypography.displaySmall.copyWith(
+                              color: colorScheme.onSurface,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            "Here's how your goals are progressing in ${Helpers.currentYear}",
+                            style: AppTypography.bodyMedium.copyWith(
+                              color:
+                                  colorScheme.onSurface.withValues(alpha: 0.6),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => context.push('/settings'),
+                      icon: const Icon(Icons.settings_outlined),
+                    ),
+                  ],
+                ),
               ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _StatsRow extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: _StatCard(
-            label: 'Completed',
-            value: '0',
-            icon: Icons.check_circle_outline,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _StatCard(
-            label: 'In Progress',
-            value: '0',
-            icon: Icons.pending_outlined,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _StatCard(
-            label: 'Milestones',
-            value: '0',
-            icon: Icons.emoji_events_outlined,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _StatCard extends StatelessWidget {
-  final String label;
-  final String value;
-  final IconData icon;
-
-  const _StatCard({
-    required this.label,
-    required this.value,
-    required this.icon,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.cardBorder),
-      ),
-      child: Column(
-        children: [
-          Icon(icon, color: AppColors.gold, size: 24),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: AppTypography.headlineMedium.copyWith(
-              color: AppColors.gold,
             ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            style: AppTypography.caption,
-          ),
-        ],
-      ),
-    );
-  }
-}
 
-class _BingoGridPlaceholder extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    const gridSize = 5;
-
-    return Center(
-      child: AspectRatio(
-        aspectRatio: 1,
-        child: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.cardBorder),
-          ),
-          child: GridView.builder(
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: gridSize,
-              crossAxisSpacing: 8,
-              mainAxisSpacing: 8,
+            // Stats grid
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+                child: DashboardStatsGrid(stats: stats),
+              ),
             ),
-            itemCount: gridSize * gridSize,
-            itemBuilder: (context, index) {
-              return _PlaceholderCell(position: index);
-            },
-          ),
+
+            // Boards section header
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Your Boards',
+                      style: AppTypography.headlineSmall.copyWith(
+                        color: colorScheme.onSurface,
+                      ),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: _showCreateBoardDialog,
+                      icon: const Icon(Icons.add, size: 18),
+                      label: const Text('New Board'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // Boards list — async
+            boardsAsync.when(
+              loading: () => const SliverToBoxAdapter(
+                child: Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(40),
+                    child: CircularProgressIndicator(),
+                  ),
+                ),
+              ),
+              error: (error, _) => SliverToBoxAdapter(
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(40),
+                    child: Column(
+                      children: [
+                        const Icon(Icons.error_outline, size: 48),
+                        const SizedBox(height: 12),
+                        Text('Failed to load boards',
+                            style: AppTypography.bodyMedium),
+                        const SizedBox(height: 12),
+                        OutlinedButton(
+                          onPressed: () =>
+                              ref.invalidate(boardSummariesProvider),
+                          child: const Text('Retry'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              data: (boards) {
+                if (boards.isEmpty) {
+                  return SliverToBoxAdapter(
+                      child: _buildEmptyState(colorScheme));
+                }
+                return SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
+                  sliver: SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) {
+                        final board = boards[index];
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 16),
+                          child: BoardCard(
+                            board: board,
+                            totalBoards: boards.length,
+                            onTap: () =>
+                                context.push('/board/${board.id}'),
+                            onRename: () =>
+                                _showRenameDialog(board.id, board.title),
+                            onDelete: () => _confirmDelete(board.id),
+                            onSetDefault: () {
+                              ref
+                                  .read(boardActionsProvider)
+                                  .setDefaultBoard(board.id);
+                            },
+                          ),
+                        );
+                      },
+                      childCount: boards.length,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
         ),
       ),
     );
   }
-}
 
-class _PlaceholderCell extends StatelessWidget {
-  final int position;
-
-  const _PlaceholderCell({required this.position});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        // TODO: Open goal modal
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Tapped cell $position')),
-        );
-      },
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppColors.background,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: AppColors.cardBorder,
-            width: 1,
-          ),
-        ),
-        child: Center(
-          child: Icon(
-            Icons.add,
-            color: AppColors.textMuted,
-            size: 20,
-          ),
+  Widget _buildEmptyState(ColorScheme colorScheme) {
+    return Padding(
+      padding: const EdgeInsets.all(40),
+      child: GlassCard(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: colorScheme.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Icon(
+                Icons.dashboard_outlined,
+                size: 48,
+                color: colorScheme.primary,
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Create Your First Board',
+              style: AppTypography.headlineSmall.copyWith(
+                color: colorScheme.onSurface,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Start tracking your goals with a beautiful goal board.',
+              style: AppTypography.bodyMedium.copyWith(
+                color: colorScheme.onSurface.withValues(alpha: 0.6),
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: _showCreateBoardDialog,
+              icon: const Icon(Icons.add),
+              label: const Text('Create Board'),
+            ),
+          ],
         ),
       ),
     );
