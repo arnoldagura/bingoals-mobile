@@ -41,6 +41,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
+  Future<void> _loginWithGoogle() async {
+    final success = await ref.read(authProvider.notifier).loginWithGoogle();
+
+    if (success && mounted) {
+      context.go(AppRoutes.dashboard);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
@@ -173,6 +181,57 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         : const Text('Sign In'),
                   ),
                 ).animate(delay: 600.ms).fadeIn(),
+                const SizedBox(height: 20),
+
+                // Divider
+                Row(
+                  children: [
+                    Expanded(
+                      child: Divider(
+                        color: AppColors.textSecondary.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Text(
+                        'or',
+                        style: AppTypography.bodySmall.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: Divider(
+                        color: AppColors.textSecondary.withValues(alpha: 0.3),
+                      ),
+                    ),
+                  ],
+                ).animate(delay: 650.ms).fadeIn(),
+                const SizedBox(height: 20),
+
+                // Google Sign-In button
+                SizedBox(
+                  height: 50,
+                  child: OutlinedButton.icon(
+                    onPressed: authState.isLoading ? null : _loginWithGoogle,
+                    icon: Image.network(
+                      'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg',
+                      height: 20,
+                      width: 20,
+                      errorBuilder: (_, _, _) =>
+                          const Icon(Icons.g_mobiledata, size: 24),
+                    ),
+                    label: const Text('Sign in with Google'),
+                    style: OutlinedButton.styleFrom(
+                      side: BorderSide(
+                        color: AppColors.textSecondary.withValues(alpha: 0.3),
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ).animate(delay: 700.ms).fadeIn(),
                 const SizedBox(height: 16),
 
                 // Register link

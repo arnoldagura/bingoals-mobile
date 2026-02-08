@@ -53,6 +53,16 @@ class AuthApi {
       ApiConstants.login,
       data: {'email': email, 'password': password},
     );
+
+    logger.t("Trace log after login");
+    return AuthResponse.fromJson(response.data);
+  }
+
+  Future<AuthResponse> googleLogin({required String idToken}) async {
+    final response = await _dio.post(
+      ApiConstants.googleAuth,
+      data: {'idToken': idToken},
+    );
     return AuthResponse.fromJson(response.data);
   }
 

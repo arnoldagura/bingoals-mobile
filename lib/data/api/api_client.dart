@@ -4,7 +4,18 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../../core/constants/api_constants.dart';
 
-const _secureStorage = FlutterSecureStorage();
+// Configure secure storage with platform-specific options
+// Note: macOS may require code signing for keychain access
+// For development, this configuration should work without signing
+const _secureStorage = FlutterSecureStorage(
+  iOptions: IOSOptions(
+    accessibility: KeychainAccessibility.first_unlock_this_device,
+  ),
+  mOptions: MacOsOptions(
+    accessibility: KeychainAccessibility.first_unlock_this_device,
+    // Use default keychain service name for macOS
+  ),
+);
 
 /// Provides the secure storage instance
 final secureStorageProvider = Provider<FlutterSecureStorage>((ref) {

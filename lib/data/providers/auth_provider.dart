@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 import '../../core/constants/api_constants.dart';
 import '../api/api_client.dart';
@@ -90,6 +91,43 @@ class AuthNotifier extends StateNotifier<AuthState> {
     } on DioException catch (e) {
       final message = _extractError(e);
       state = AuthState(error: message);
+      return false;
+    }
+  }
+
+  /// Login with Google
+  Future<bool> loginWithGoogle() async {
+    // Clear any previous error without setting isLoading.
+    // Setting isLoading triggers a router rebuild (new GoRouter with
+    // initialLocation: '/splash'), which navigates away from the login
+    // screen while the Google Sign-In overlay is showing.
+    // Google Sign-In shows its own UI, so we don't need a loading indicator.
+    state = state.copyWith(error: null);
+    try {
+      // Initialize and trigger Google Sign-In (v7 API)
+      final googleSignIn = GoogleSignIn.instance;
+      await googleSignIn.initialize(
+        serverClientId: ApiConstants.googleServerClientId,
+      );
+      final account = await googleSignIn.authenticate();
+
+      final idToken = account.authentication.idToken;
+      if (idToken == null) {
+        state = AuthState(error: 'Failed to get Google ID token');
+        return false;
+      }
+
+      // Send ID token to our backend
+      final authApi = _ref.read(authApiProvider);
+      final response = await authApi.googleLogin(idToken: idToken);
+      await _saveTokenAndSetUser(response.token, response.user);
+      return true;
+    } on DioException catch (e) {
+      final message = _extractError(e);
+      state = AuthState(error: message);
+      return false;
+    } catch (e) {
+      state = AuthState(error: 'Google sign-in failed');
       return false;
     }
   }

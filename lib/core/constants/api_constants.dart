@@ -10,6 +10,7 @@ class ApiConstants {
   // Auth endpoints
   static const String register = '/api/auth/register';
   static const String login = '/api/auth/login';
+  static const String googleAuth = '/api/auth/google';
   static const String me = '/api/me';
 
   // Board endpoints
@@ -28,4 +29,7 @@ class ApiConstants {
 
   // Storage keys
   static const String tokenKey = 'auth_token';
+
+  // Google Sign-In (Web client ID — must match GOOGLE_CLIENT_ID in api/.env)
+  static const String googleServerClientId = '656331294595-huh2kgj7go6770uh1ueti0bqm63th7tj.apps.googleusercontent.com';
 }
