@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
+import '../../../core/constants/board_categories.dart';
 import '../../../core/theme/typography.dart';
 import '../../../data/models/models.dart';
 import '../common/glass_card.dart';
 import '../common/circular_progress.dart';
 
-/// Card displaying a board summary with mini grid preview
 class BoardCard extends StatelessWidget {
   final BoardSummary board;
   final VoidCallback? onTap;
@@ -33,7 +33,6 @@ class BoardCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
           Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -65,7 +64,6 @@ class BoardCard extends StatelessWidget {
                         ],
                       ),
                     ),
-                    // Menu button
                     PopupMenuButton<String>(
                       icon: Icon(
                         Icons.more_horiz,
@@ -106,7 +104,6 @@ class BoardCard extends StatelessWidget {
                               ],
                             ),
                           ),
-                        if (totalBoards > 1)
                           PopupMenuItem(
                             value: 'delete',
                             child: Row(
@@ -123,6 +120,37 @@ class BoardCard extends StatelessWidget {
                     ),
                   ],
                 ),
+                if (board.category != null) ...[
+                  const SizedBox(height: 6),
+                  Builder(builder: (context) {
+                    final cat =
+                        BoardCategory.fromKey(board.category);
+                    if (cat == null) return const SizedBox.shrink();
+                    return Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: cat.color.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(cat.icon, size: 12, color: cat.color),
+                          const SizedBox(width: 4),
+                          Text(
+                            cat.label,
+                            style: AppTypography.caption.copyWith(
+                              color: cat.color,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+                ],
                 const SizedBox(height: 4),
                 Text(
                   '${board.completedCount} of ${board.goalCount} goals complete',
@@ -131,7 +159,6 @@ class BoardCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 16),
-                // Progress and mini grid
                 Row(
                   children: [
                     CircularProgress(
@@ -151,7 +178,6 @@ class BoardCard extends StatelessWidget {
               ],
             ),
           ),
-          // Footer
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
@@ -185,20 +211,20 @@ class BoardCard extends StatelessWidget {
   }
 }
 
-/// Mini 5x5 grid preview showing completed goals
 class _MiniGridPreview extends StatelessWidget {
   final int completed;
   final int total;
+  final int gridSize;
 
   const _MiniGridPreview({
     required this.completed,
     required this.total,
+    required this.gridSize
   });
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Container(
       padding: const EdgeInsets.all(4),
@@ -210,34 +236,21 @@ class _MiniGridPreview extends StatelessWidget {
         aspectRatio: 1,
         child: GridView.builder(
           physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 5,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: gridSize,
             mainAxisSpacing: 2,
             crossAxisSpacing: 2,
           ),
-          itemCount: 25,
+          itemCount: gridSize * gridSize,
           itemBuilder: (context, index) {
-            final isCenter = index == 12; // Center cell (grace/free space)
-            final isCompleted = index < completed && !isCenter;
+            final isCompleted = index < completed;
 
             return Container(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(2),
-                gradient: isCenter
-                    ? LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          colorScheme.primary.withValues(alpha: 0.4),
-                          colorScheme.secondary.withValues(alpha: 0.3),
-                        ],
-                      )
-                    : null,
-                color: isCenter
-                    ? null
-                    : isCompleted
-                        ? colorScheme.primary
-                        : colorScheme.onSurface.withValues(alpha: 0.1),
+                color: isCompleted
+                    ? colorScheme.primary
+                    : colorScheme.onSurface.withValues(alpha: 0.1),
               ),
             );
           },

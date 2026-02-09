@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constants/api_constants.dart';
 import '../models/board.dart';
+import '../models/mini_goal.dart';
+import '../models/reflection.dart';
 import 'api_client.dart';
 
 /// Boards API service
@@ -24,22 +26,29 @@ class BoardsApi {
         .toList();
   }
 
-  /// Get a single board with all goals
   Future<Board> getBoard(String id) async {
     final response = await _dio.get(ApiConstants.board(id));
     return Board.fromJson(response.data);
   }
 
-  /// Create a new board
-  Future<Board> createBoard({required String title, int? year}) async {
+  Future<Board> createBoard({
+    required String title,
+    int? year,
+    int gridSize = 5,
+    String? category,
+  }) async {
     final response = await _dio.post(
       ApiConstants.boards,
-      data: {'title': title, if (year != null) 'year': year},
+      data: {
+        'title': title,
+        'year': ?year,
+        'gridSize': gridSize,
+        'category': ?category,
+      },
     );
     return Board.fromJson(response.data);
   }
 
-  /// Update a board (title and/or isDefault)
   Future<void> updateBoard(
     String id, {
     String? title,
@@ -48,18 +57,16 @@ class BoardsApi {
     await _dio.put(
       ApiConstants.board(id),
       data: {
-        if (title != null) 'title': title,
-        if (isDefault != null) 'isDefault': isDefault,
+        'title': ?title,
+        'isDefault': ?isDefault,
       },
     );
   }
 
-  /// Delete a board
   Future<void> deleteBoard(String id) async {
     await _dio.delete(ApiConstants.board(id));
   }
 
-  /// Update a goal at a specific position
   Future<void> updateGoal(
     String boardId,
     int position, {
@@ -71,16 +78,83 @@ class BoardsApi {
     await _dio.put(
       ApiConstants.updateGoal(boardId, position),
       data: {
-        if (title != null) 'title': title,
-        if (description != null) 'description': description,
-        if (imageUrl != null) 'imageUrl': imageUrl,
-        if (isCompleted != null) 'isCompleted': isCompleted,
+        'title': ?title,
+        'description': ?description,
+        'imageUrl': ?imageUrl,
+        'isCompleted': ?isCompleted,
       },
     );
   }
 
-  /// Toggle goal completion
-  Future<void> toggleGoal(String boardId, int position) async {
-    await _dio.post(ApiConstants.toggleGoal(boardId, position));
+  Future<Map<String, dynamic>> toggleGoal(
+      String boardId, int position) async {
+    final response =
+        await _dio.post(ApiConstants.toggleGoal(boardId, position));
+    return response.data as Map<String, dynamic>;
+  }
+
+  Future<MiniGoal> createMiniGoal(
+    String boardId,
+    int position, {
+    required String title,
+    required int percentage,
+  }) async {
+    final response = await _dio.post(
+      ApiConstants.miniGoals(boardId, position),
+      data: {'title': title, 'percentage': percentage},
+    );
+    return MiniGoal.fromJson(response.data);
+  }
+
+  Future<MiniGoal> toggleMiniGoal(
+      String boardId, int position, String miniGoalId) async {
+    final response = await _dio.post(
+      ApiConstants.toggleMiniGoal(boardId, position, miniGoalId),
+    );
+    return MiniGoal.fromJson(response.data);
+  }
+
+  Future<MiniGoal> updateMiniGoal(
+    String boardId,
+    int position,
+    String miniGoalId, {
+    String? title,
+    int? percentage,
+  }) async {
+    final response = await _dio.put(
+      ApiConstants.miniGoal(boardId, position, miniGoalId),
+      data: {
+        'title': ?title,
+        'percentage': ?percentage,
+      },
+    );
+    return MiniGoal.fromJson(response.data);
+  }
+
+  Future<void> deleteMiniGoal(
+      String boardId, int position, String miniGoalId) async {
+    await _dio.delete(
+      ApiConstants.miniGoal(boardId, position, miniGoalId),
+    );
+  }
+
+  Future<Reflection> upsertReflection(
+    String boardId,
+    int position, {
+    String? obstacles,
+    String? victories,
+    String? notes,
+    String? reflectionAnswer,
+  }) async {
+    final response = await _dio.put(
+      ApiConstants.reflection(boardId, position),
+      data: {
+        'obstacles': ?obstacles,
+        'victories': ?victories,
+        'notes': ?notes,
+        'reflectionAnswer': ?reflectionAnswer,
+      },
+    );
+    return Reflection.fromJson(response.data);
   }
 }

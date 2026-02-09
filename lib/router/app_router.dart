@@ -6,43 +6,52 @@ import '../data/providers/auth_provider.dart';
 import '../presentation/screens/splash/splash_screen.dart';
 import '../presentation/screens/login/login_screen.dart';
 import '../presentation/screens/login/register_screen.dart';
+import '../presentation/screens/onboarding/onboarding_screen.dart';
 import '../presentation/screens/dashboard/dashboard_screen.dart';
 import '../presentation/screens/board/board_screen.dart';
 import '../presentation/screens/settings/settings_screen.dart';
 import '../presentation/screens/vision_board/vision_board_screen.dart';
 
-/// Route names
 class AppRoutes {
   static const String splash = '/splash';
   static const String login = '/login';
   static const String register = '/register';
+  static const String onboarding = '/onboarding';
   static const String dashboard = '/';
   static const String board = '/board/:boardId';
   static const String visionBoard = '/vision-board';
   static const String settings = '/settings';
 
-  /// Helper to build board route with ID
   static String boardPath(String boardId) => '/board/$boardId';
 }
 
-/// GoRouter configuration provider
+class _RouterRefreshNotifier extends ChangeNotifier {
+  void notify() => notifyListeners();
+}
+
 final appRouterProvider = Provider<GoRouter>((ref) {
-  final authState = ref.watch(authProvider);
+  final refreshNotifier = _RouterRefreshNotifier();
+
+  ref.listen(authProvider, (_, __) => refreshNotifier.notify());
+  ref.listen(onboardingCompletedProvider, (_, __) => refreshNotifier.notify());
 
   return GoRouter(
     initialLocation: AppRoutes.splash,
     debugLogDiagnostics: true,
+    refreshListenable: refreshNotifier,
     redirect: (context, state) {
+      final authState = ref.read(authProvider);
+      final onboardingDone =
+          ref.read(onboardingCompletedProvider).valueOrNull ?? true;
+
       final isLoggedIn = authState.isLoggedIn;
       final isLoading = authState.isLoading;
       final currentPath = state.uri.path;
 
-      // While loading (checking stored token), stay on splash
       if (isLoading && currentPath == AppRoutes.splash) {
         return null;
       }
 
-      // Done loading, not logged in, on splash → go to login
       if (!isLoading && !isLoggedIn && currentPath == AppRoutes.splash) {
         return AppRoutes.login;
       }
@@ -51,14 +60,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           currentPath == AppRoutes.register ||
           currentPath == AppRoutes.splash;
 
-      // Not logged in → go to login
       if (!isLoggedIn && !isAuthPage) {
         return AppRoutes.login;
       }
 
-      // Logged in but on auth page → go to dashboard
       if (isLoggedIn && isAuthPage) {
-        return AppRoutes.dashboard;
+        return onboardingDone ? AppRoutes.dashboard : AppRoutes.onboarding;
       }
 
       return null;
@@ -78,6 +85,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.register,
         name: 'register',
         builder: (context, state) => const RegisterScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.onboarding,
+        name: 'onboarding',
+        builder: (context, state) => const OnboardingScreen(),
       ),
       GoRoute(
         path: AppRoutes.dashboard,

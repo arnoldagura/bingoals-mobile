@@ -6,8 +6,9 @@ import '../../core/constants/api_constants.dart';
 import '../api/api_client.dart';
 import '../api/auth_api.dart';
 import '../models/user.dart';
+import 'boards_provider.dart';
+import '../../presentation/screens/onboarding/onboarding_screen.dart';
 
-/// Auth state
 class AuthState {
   final User? user;
   final bool isLoading;
@@ -26,13 +27,11 @@ class AuthState {
   }
 }
 
-/// Auth state notifier
 class AuthNotifier extends StateNotifier<AuthState> {
   final Ref _ref;
 
   AuthNotifier(this._ref) : super(const AuthState());
 
-  /// Try to restore session from stored token
   Future<void> tryRestoreSession() async {
     final storage = _ref.read(secureStorageProvider);
     final token = await storage.read(key: ApiConstants.tokenKey);
@@ -44,7 +43,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
       final user = await authApi.getMe();
       state = AuthState(user: user);
     } on DioException catch (e) {
-      // Token is invalid or expired — clear it
       if (e.response?.statusCode == 401) {
         await storage.delete(key: ApiConstants.tokenKey);
       }
@@ -54,7 +52,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  /// Register a new user
   Future<bool> register({
     required String name,
     required String email,
@@ -77,7 +74,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  /// Login with email and password
   Future<bool> login({
     required String email,
     required String password,
@@ -95,16 +91,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  /// Login with Google
   Future<bool> loginWithGoogle() async {
-    // Clear any previous error without setting isLoading.
-    // Setting isLoading triggers a router rebuild (new GoRouter with
-    // initialLocation: '/splash'), which navigates away from the login
-    // screen while the Google Sign-In overlay is showing.
-    // Google Sign-In shows its own UI, so we don't need a loading indicator.
     state = state.copyWith(error: null);
     try {
-      // Initialize and trigger Google Sign-In (v7 API)
       final googleSignIn = GoogleSignIn.instance;
       await googleSignIn.initialize(
         serverClientId: ApiConstants.googleServerClientId,
@@ -117,7 +106,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
         return false;
       }
 
-      // Send ID token to our backend
       final authApi = _ref.read(authApiProvider);
       final response = await authApi.googleLogin(idToken: idToken);
       await _saveTokenAndSetUser(response.token, response.user);
@@ -132,10 +120,20 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  /// Logout — clear token and state
+  Future<void> refreshUser() async {
+    try {
+      final authApi = _ref.read(authApiProvider);
+      final user = await authApi.getMe();
+      state = AuthState(user: user);
+    } catch (_) {
+    }
+  }
+
   Future<void> logout() async {
     final storage = _ref.read(secureStorageProvider);
     await storage.delete(key: ApiConstants.tokenKey);
+    _ref.invalidate(boardSummariesProvider);
+    _ref.invalidate(onboardingCompletedProvider);
     state = const AuthState();
   }
 

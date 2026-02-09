@@ -41,11 +41,9 @@ class AppColors {
   static const Color error = Color(0xFFEF4444);
 
   // Grid colors
-  static const Color bingoHeader = Color(0xFF171717);
-  static const Color bingoHeaderText = Color(0xFFFFFFFF);
-  static const Color bingoCell = Color(0xFFFFFFFF);
-  static const Color bingoCellBorder = Color(0xFFD4D4D4);
-  static const Color bingoCellDashed = Color(0xFFA3A3A3);
+  static const Color goalCell = Color(0xFFFFFFFF);
+  static const Color goalCellBorder = Color(0xFFD4D4D4);
+  static const Color goalCellDashed = Color(0xFFA3A3A3);
 
   // Card and border colors
   static const Color cardBorderLight = Color(0xFFE5E5E5);

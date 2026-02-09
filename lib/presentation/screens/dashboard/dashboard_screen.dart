@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/constants/board_categories.dart';
 import '../../../core/theme/typography.dart';
 import '../../../core/utils/helpers.dart';
 import '../../../data/providers/auth_provider.dart';
@@ -20,6 +21,10 @@ class DashboardScreen extends ConsumerStatefulWidget {
 
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   final _newBoardController = TextEditingController();
+  int _selectedGridSize = 5;
+  String? _selectedCategory;
+  String? _filterCategory;
+  String? _nameErrorText;
 
   @override
   void dispose() {
@@ -29,29 +34,186 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   void _showCreateBoardDialog() {
     _newBoardController.clear();
+    _selectedGridSize = 5;
+    _selectedCategory = null;
+    _nameErrorText = null;
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Create New Board'),
-        content: TextField(
-          controller: _newBoardController,
-          autofocus: true,
-          decoration: const InputDecoration(
-            hintText: 'e.g., Career Goals 2026',
-            labelText: 'Board Name',
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Create New Boardsad'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TextField(
+                controller: _newBoardController,
+                autofocus: true,
+                decoration: InputDecoration(
+                  hintText: 'e.g., Career Goals 2026',
+                  labelText: 'Board Name',
+                  errorText: _nameErrorText,
+                ),
+                onChanged: (value) {
+                  if (_nameErrorText != null) {
+                    setDialogState(() => _nameErrorText = null);
+                  }
+                },
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'Category',
+                style: AppTypography.labelMedium.copyWith(
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: BoardCategory.all.map((cat) {
+                  final isSelected = _selectedCategory == cat.key;
+                  return GestureDetector(
+                    onTap: () => setDialogState(() =>
+                        _selectedCategory =
+                            isSelected ? null : cat.key),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? cat.color.withValues(alpha: 0.15)
+                            : Theme.of(context)
+                                .colorScheme
+                                .onSurface
+                                .withValues(alpha: 0.05),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: isSelected
+                              ? cat.color
+                              : Theme.of(context)
+                                  .colorScheme
+                                  .onSurface
+                                  .withValues(alpha: 0.15),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(cat.icon, size: 16, color: cat.color),
+                          const SizedBox(width: 4),
+                          Text(
+                            cat.label,
+                            style: AppTypography.caption.copyWith(
+                              color: isSelected
+                                  ? cat.color
+                                  : Theme.of(context)
+                                      .colorScheme
+                                      .onSurface,
+                              fontWeight: isSelected
+                                  ? FontWeight.w600
+                                  : FontWeight.normal,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'Grid Size',
+                style: AppTypography.labelMedium.copyWith(
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [3, 5, 7].map((size) {
+                  final isSelected = _selectedGridSize == size;
+                  return Expanded(
+                    child: Padding(
+                      padding: EdgeInsets.only(
+                        right: size == 7 ? 0 : 8,
+                      ),
+                      child: GestureDetector(
+                        onTap: () => setDialogState(
+                            () => _selectedGridSize = size),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? Theme.of(context).colorScheme.primary
+                                : Theme.of(context)
+                                    .colorScheme
+                                    .onSurface
+                                    .withValues(alpha: 0.05),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: isSelected
+                                  ? Theme.of(context).colorScheme.primary
+                                  : Theme.of(context)
+                                      .colorScheme
+                                      .onSurface
+                                      .withValues(alpha: 0.15),
+                            ),
+                          ),
+                          child: Column(
+                            children: [
+                              Text(
+                                '${size}x$size',
+                                style: AppTypography.labelLarge.copyWith(
+                                  color: isSelected
+                                      ? Colors.white
+                                      : Theme.of(context)
+                                          .colorScheme
+                                          .onSurface,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                '${size * size} goals',
+                                style: AppTypography.caption.copyWith(
+                                  color: isSelected
+                                      ? Colors.white70
+                                      : Theme.of(context)
+                                          .colorScheme
+                                          .onSurface
+                                          .withValues(alpha: 0.5),
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ],
           ),
-          onSubmitted: (_) => _createBoard(),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final title = _newBoardController.text.trim();
+                if (title.isEmpty) {
+                  setDialogState(() => _nameErrorText = 'Board Name cannot be empty');
+                } else {
+                  _createBoard(); 
+                }
+              },
+              child: const Text('Create'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: _createBoard,
-            child: const Text('Create'),
-          ),
-        ],
       ),
     );
   }
@@ -61,53 +223,57 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     if (title.isEmpty) return;
 
     Navigator.pop(context);
-    await ref.read(boardActionsProvider).createBoard(title);
+    await ref.read(boardActionsProvider).createBoard(
+          title,
+          gridSize: _selectedGridSize,
+          category: _selectedCategory,
+        );
   }
 
   void _showRenameDialog(String boardId, String currentTitle) {
     _newBoardController.text = currentTitle;
+    _nameErrorText = null;
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Rename Board'),
-        content: TextField(
-          controller: _newBoardController,
-          autofocus: true,
-          decoration: const InputDecoration(
-            labelText: 'Board Name',
-          ),
-          onSubmitted: (_) async {
-            final newTitle = _newBoardController.text.trim();
-            if (newTitle.isNotEmpty) {
-              Navigator.pop(context);
-              await ref
-                  .read(boardActionsProvider)
-                  .renameBoard(boardId, newTitle);
-            }
-          },
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              final newTitle = _newBoardController.text.trim();
-              if (newTitle.isNotEmpty) {
-                Navigator.pop(context);
-                await ref
-                    .read(boardActionsProvider)
-                    .renameBoard(boardId, newTitle);
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Rename Board'),
+          content: TextField(
+            controller: _newBoardController,
+            autofocus: true,
+            decoration: InputDecoration(
+              labelText: 'Board Name',
+              errorText: _nameErrorText,
+            ),
+            onChanged: (value) {
+              if (_nameErrorText != null) {
+                setDialogState(() => _nameErrorText = null);
               }
             },
-            child: const Text('Rename'),
           ),
-        ],
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final newTitle = _newBoardController.text.trim();
+                if (newTitle.isEmpty) {
+                  setDialogState(() => _nameErrorText = 'Name cannot be empty');
+                  return;
+                }
+                Navigator.pop(context);
+                await ref.read(boardActionsProvider).renameBoard(boardId, newTitle);
+              },
+              child: const Text('Rename'),
+            ),
+          ],
+        ),
       ),
     );
   }
-
   void _confirmDelete(String boardId) {
     showDialog(
       context: context,
@@ -155,7 +321,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       body: SafeArea(
         child: CustomScrollView(
           slivers: [
-            // Header
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
@@ -194,7 +359,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               ),
             ),
 
-            // Stats grid
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
@@ -202,15 +366,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               ),
             ),
 
-            // Boards section header
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Your Boards',
+                      'Your Boardswew',
                       style: AppTypography.headlineSmall.copyWith(
                         color: colorScheme.onSurface,
                       ),
@@ -224,8 +387,42 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 ),
               ),
             ),
+            SliverToBoxAdapter(
+              child: SizedBox(
+                height: 36,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: FilterChip(
+                        label: const Text('All'),
+                        selected: _filterCategory == null,
+                        onSelected: (_) =>
+                            setState(() => _filterCategory = null),
+                      ),
+                    ),
+                    ...BoardCategory.all.map((cat) => Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: FilterChip(
+                            avatar: Icon(cat.icon, size: 16, color: cat.color),
+                            label: Text(cat.label),
+                            selected: _filterCategory == cat.key,
+                            onSelected: (_) => setState(() =>
+                                _filterCategory =
+                                    _filterCategory == cat.key
+                                        ? null
+                                        : cat.key),
+                          ),
+                        )),
+                  ],
+                ),
+              ),
+            ),
 
-            // Boards list — async
+            const SliverToBoxAdapter(child: SizedBox(height: 12)),
+
             boardsAsync.when(
               loading: () => const SliverToBoxAdapter(
                 child: Center(
@@ -261,12 +458,33 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   return SliverToBoxAdapter(
                       child: _buildEmptyState(colorScheme));
                 }
+                final filtered = _filterCategory == null
+                    ? boards
+                    : boards
+                        .where((b) => b.category == _filterCategory)
+                        .toList();
+                if (filtered.isEmpty) {
+                  return SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.all(40),
+                      child: Center(
+                        child: Text(
+                          'No boards in this category',
+                          style: AppTypography.bodyMedium.copyWith(
+                            color: colorScheme.onSurface
+                                .withValues(alpha: 0.5),
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }
                 return SliverPadding(
                   padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
                   sliver: SliverList(
                     delegate: SliverChildBuilderDelegate(
                       (context, index) {
-                        final board = boards[index];
+                        final board = filtered[index];
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 16),
                           child: BoardCard(
@@ -285,7 +503,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           ),
                         );
                       },
-                      childCount: boards.length,
+                      childCount: filtered.length,
                     ),
                   ),
                 );

@@ -3,7 +3,6 @@ import '../../../core/theme/typography.dart';
 import '../../../data/providers/boards_provider.dart';
 import '../common/glass_card.dart';
 
-/// Dashboard stats grid showing goals, progress, gems, and boards
 class DashboardStatsGrid extends StatelessWidget {
   final DashboardStats stats;
 
@@ -29,20 +28,22 @@ class DashboardStatsGrid extends StatelessWidget {
           subValue: 'of ${stats.totalGoals}',
         ),
         _StatCard(
-          icon: Icons.trending_up,
-          label: 'Overall Progress',
-          value: '${stats.overallProgress}%',
+          icon: Icons.local_fire_department,
+          label: 'Daily Streak',
+          value: '${stats.dailyStreak}',
+          subValue: stats.dailyStreak == 1 ? 'day' : 'days',
         ),
         _StatCard(
           icon: Icons.diamond_outlined,
           label: 'Gems Earned',
           value: '${stats.totalGems}',
+          subValue: stats.level,
         ),
         _StatCard(
-          icon: Icons.calendar_today_outlined,
+          icon: Icons.dashboard_outlined,
           label: 'Active Boards',
           value: '${stats.activeBoards}',
-          subValue: 'in ${stats.year}',
+          subValue: '${stats.overallProgress}% done',
         ),
       ],
     );
