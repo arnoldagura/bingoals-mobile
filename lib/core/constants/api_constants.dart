@@ -5,7 +5,7 @@ class ApiConstants {
   // Base URL - change this to your deployed API URL
   // For iOS simulator: use localhost
   // For Android emulator: use 10.0.2.2 instead of localhost
-  static const String baseUrl = 'http://localhost:8080';
+  static const String baseUrl = 'https://bingoal-api.onrender.com';
 
   static const String register = '/api/auth/register';
   static const String login = '/api/auth/login';

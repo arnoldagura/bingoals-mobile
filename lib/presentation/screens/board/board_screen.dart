@@ -773,36 +773,64 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: () async {
-                  final picker = ImagePicker();
-                  final image = await picker.pickImage(
-                    source: ImageSource.gallery,
-                    maxWidth: 800,
-                    maxHeight: 800,
-                    imageQuality: 85,
-                  );
-                  if (image == null) return;
-                  if (!mounted) return;
-                  Navigator.pop(sheetContext);
-                  await handleCompletion();
-                  try {
-                    await ref.read(boardActionsProvider).uploadGoalImage(
-                        widget.boardId, position, image.path);
-                  } catch (e) {
-                    _showError(e);
-                  }
-                },
-                icon: const Icon(Icons.photo_library_outlined),
-                label: const Text('Upload Photo'),
-              ),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => _pickImage(
+                      ImageSource.camera,
+                      sheetContext,
+                      position,
+                      handleCompletion,
+                    ),
+                    icon: const Icon(Icons.camera_alt_outlined),
+                    label: const Text('Take Photo'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => _pickImage(
+                      ImageSource.gallery,
+                      sheetContext,
+                      position,
+                      handleCompletion,
+                    ),
+                    icon: const Icon(Icons.photo_library_outlined),
+                    label: const Text('Gallery'),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
       ),
     ).then((_) => handleCompletion());
+  }
+
+  Future<void> _pickImage(
+    ImageSource source,
+    BuildContext sheetContext,
+    int position,
+    Future<void> Function() handleCompletion,
+  ) async {
+    final picker = ImagePicker();
+    final image = await picker.pickImage(
+      source: source,
+      maxWidth: 800,
+      maxHeight: 800,
+      imageQuality: 85,
+    );
+    if (image == null) return;
+    if (!mounted) return;
+    Navigator.pop(sheetContext);
+    await handleCompletion();
+    try {
+      await ref.read(boardActionsProvider).uploadGoalImage(
+          widget.boardId, position, image.path);
+    } catch (e) {
+      _showError(e);
+    }
   }
 
   Future<void> _saveGoal(int position) async {
@@ -1028,17 +1056,27 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
   }
 
   Widget _buildGridView(Board board) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Center(
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 500),
-          child: GoalGrid(
+          child: Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: colorScheme.surface.withValues(alpha: 0.3),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: colorScheme.outline.withValues(alpha: 0.1),
+              ),
+            ),
+            child: GoalGrid(
             goals: board.goals,
             gridSize: board.gridSize,
             onCellTap: (index) {
               final goal = board.goals[index];
-              if (goal.isCompleted && !goal.isGraceSquare) {
+              if (goal.isCompleted) {
                 _showReflectionSheet(board, index);
               } else {
                 _showGoalDialog(board, index);
@@ -1069,6 +1107,7 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
                 _showError(e);
               }
             },
+          ),
           ),
         ),
       ),

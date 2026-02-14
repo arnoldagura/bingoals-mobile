@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../../core/theme/colors.dart';
 import '../../../data/models/goal.dart';
 import 'goal_cell.dart';
 
@@ -17,74 +16,58 @@ class GoalGrid extends StatelessWidget {
     this.onCellLongPress,
   });
 
+  static const double _gap = 4.0;
+  static const double _cellRadius = 10.0;
+
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.goalCell,
-        borderRadius: BorderRadius.circular(8),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: AspectRatio(
-          aspectRatio: 1,
-          child: Column(
-            children: List.generate(gridSize, (row) {
-              return Expanded(
-                child: Row(
-                  children: List.generate(gridSize, (col) {
-                    final index = row * gridSize + col;
-                    final goal = goals[index];
+    return AspectRatio(
+      aspectRatio: 1,
+      child: Column(
+        spacing: _gap,
+        children: List.generate(gridSize, (row) {
+          return Expanded(
+            child: Row(
+              spacing: _gap,
+              children: List.generate(gridSize, (col) {
+                final index = row * gridSize + col;
+                final goal = goals[index];
 
-                    return Expanded(
-                      child: GoalCell(
-                        index: index,
-                        goalTitle: goal.title,
-                        status: goal.status,
-                        isGraceSquare: goal.isGraceSquare,
-                        progress: goal.progress,
-                        icon: goal.icon,
-                        imageUrl: goal.imageUrl,
-                        onTap: goal.isGraceSquare
-                            ? null
-                            : (onCellTap != null
-                                ? () => onCellTap!(index)
-                                : null),
-                        onLongPress: goal.isGraceSquare
-                            ? null
-                            : (onCellLongPress != null
-                                ? () => onCellLongPress!(index)
-                                : null),
-                      ),
-                    );
-                  }),
-                ),
-              );
-            }),
-          ),
-        ),
+                return Expanded(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(_cellRadius),
+                    child: GoalCell(
+                      index: index,
+                      goalTitle: goal.title,
+                      status: goal.status,
+                      progress: goal.progress,
+                      icon: goal.icon,
+                      imageUrl: goal.imageUrl,
+                      onTap: onCellTap != null
+                          ? () => onCellTap!(index)
+                          : null,
+                      onLongPress: onCellLongPress != null
+                          ? () => onCellLongPress!(index)
+                          : null,
+                    ),
+                  ),
+                );
+              }),
+            ),
+          );
+        }),
       ),
     );
   }
 
   int get completedCount =>
-      goals.where((g) => g.isCompleted && !g.isGraceSquare).length;
+      goals.where((g) => g.isCompleted).length;
 
   int get filledCount =>
-      goals.where((g) => !g.isEmpty && !g.isGraceSquare).length;
+      goals.where((g) => !g.isEmpty).length;
 
   int get totalCount => goals.length;
 
-  int get totalNonGraceCount =>
-      goals.where((g) => !g.isGraceSquare).length;
-
   double get completionPercentage =>
-      totalNonGraceCount > 0 ? (completedCount / totalNonGraceCount) * 100 : 0;
+      totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
 }

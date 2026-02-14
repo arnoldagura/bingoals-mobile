@@ -25,11 +25,10 @@ class Board {
     required this.updatedAt,
   });
 
-  int get goalCount =>
-      goals.where((g) => !g.isGraceSquare).length;
+  int get goalCount => goals.length;
 
   int get completedCount =>
-      goals.where((g) => g.isCompleted && !g.isGraceSquare).length;
+      goals.where((g) => g.isCompleted).length;
 
   int get progressPercent =>
       goalCount > 0 ? ((completedCount / goalCount) * 100).round() : 0;

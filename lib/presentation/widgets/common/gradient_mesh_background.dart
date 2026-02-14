@@ -178,7 +178,7 @@ class GradientMeshScaffold extends StatelessWidget {
     final colorScheme = theme.colorScheme;
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      backgroundColor: theme.scaffoldBackgroundColor,
       extendBodyBehindAppBar: true,
       appBar: appBar,
       floatingActionButton: floatingActionButton,
