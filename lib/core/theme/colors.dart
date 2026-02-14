@@ -56,12 +56,14 @@ class AppColors {
     Color(0xFF404040),
   ];
 
-  // Confetti colors (grayscale range)
+  // Confetti colors (celebration)
   static const List<Color> confettiColors = [
-    Color(0xFF171717),
-    Color(0xFF404040),
-    Color(0xFF737373),
-    Color(0xFFA3A3A3),
+    Color(0xFFEF4444), // red
+    Color(0xFFF59E0B), // amber
+    Color(0xFF22C55E), // green
+    Color(0xFF3B82F6), // blue
+    Color(0xFF8B5CF6), // purple
+    Color(0xFFEC4899), // pink
   ];
 
   // ============== ALIASES ==============

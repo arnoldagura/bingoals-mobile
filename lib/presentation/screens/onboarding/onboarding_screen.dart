@@ -3,10 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/board_categories.dart';
-import '../../../core/theme/colors.dart';
 import '../../../core/theme/typography.dart';
 import '../../../data/api/api_client.dart';
 import '../../../data/providers/boards_provider.dart';
+import '../../widgets/common/gradient_button.dart';
 import '../../widgets/common/gradient_mesh_background.dart';
 
 final onboardingCompletedProvider = FutureProvider<bool>((ref) async {
@@ -135,24 +135,12 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     }),
                   ),
                   const SizedBox(height: 24),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 52,
-                    child: ElevatedButton(
-                      onPressed: _currentPage < 2
-                          ? _nextPage
-                          : (_isCreating ? null : _completeOnboarding),
-                      child: _isCreating
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                  strokeWidth: 2, color: Colors.white),
-                            )
-                          : Text(
-                              _currentPage < 2 ? 'Next' : 'Get Started',
-                            ),
-                    ),
+                  GradientButton(
+                    label: _currentPage < 2 ? 'Next' : 'Get Started',
+                    isLoading: _isCreating,
+                    onPressed: _currentPage < 2
+                        ? _nextPage
+                        : (_isCreating ? null : _completeOnboarding),
                   ),
                 ],
               ),
@@ -230,9 +218,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               physics: const NeverScrollableScrollPhysics(),
               children: List.generate(9, (i) {
                 final colors = [
-                  AppColors.success,
-                  const Color(0xFFFBBF24),
-                  AppColors.goalCellBorder,
+                  colorScheme.primary,
+                  colorScheme.tertiary,
+                  colorScheme.outline,
                 ];
                 return Container(
                   decoration: BoxDecoration(

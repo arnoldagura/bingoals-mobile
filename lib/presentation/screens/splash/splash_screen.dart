@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/theme/colors.dart';
 import '../../../core/theme/typography.dart';
 import '../../../data/providers/auth_provider.dart';
+import '../../widgets/common/gradient_mesh_background.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -30,8 +30,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return GradientMeshScaffold(
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -40,17 +41,17 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
               width: 120,
               height: 120,
               decoration: BoxDecoration(
-                color: AppColors.gold.withValues(alpha: 0.1),
+                color: colorScheme.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(24),
                 border: Border.all(
-                  color: AppColors.gold.withValues(alpha: 0.3),
+                  color: colorScheme.primary.withValues(alpha: 0.3),
                   width: 2,
                 ),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.grid_view_rounded,
                 size: 60,
-                color: AppColors.gold,
+                color: colorScheme.primary,
               ),
             )
                 .animate()
@@ -60,7 +61,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
             Text(
               'Bingoals',
               style: AppTypography.displayMedium.copyWith(
-                color: AppColors.gold,
+                color: colorScheme.primary,
               ),
             )
                 .animate(delay: 300.ms)
@@ -70,7 +71,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
             Text(
               'Track your goals, celebrate your wins',
               style: AppTypography.bodyMedium.copyWith(
-                color: AppColors.textSecondary,
+                color: colorScheme.onSurface.withValues(alpha: 0.5),
               ),
             ).animate(delay: 500.ms).fadeIn(duration: 600.ms),
             const SizedBox(height: 48),
@@ -79,7 +80,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
               height: 24,
               child: CircularProgressIndicator(
                 strokeWidth: 2,
-                color: AppColors.gold.withValues(alpha: 0.5),
+                color: colorScheme.primary.withValues(alpha: 0.5),
               ),
             ).animate(delay: 800.ms).fadeIn(duration: 400.ms),
           ],

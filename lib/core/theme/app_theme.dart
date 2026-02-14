@@ -12,6 +12,10 @@ class AppTheme {
     final colors = ThemePresetColors.forPreset(preset);
     final isDark = colors.brightness == Brightness.dark;
 
+    final onPrimary = colors.primary.computeLuminance() > 0.5
+        ? Colors.black
+        : Colors.white;
+
     return ThemeData(
       useMaterial3: true,
       brightness: colors.brightness,
@@ -19,9 +23,11 @@ class AppTheme {
       colorScheme: ColorScheme(
         brightness: colors.brightness,
         primary: colors.primary,
-        onPrimary: isDark ? colors.background : colors.foreground,
+        onPrimary: onPrimary,
         secondary: colors.accent,
-        onSecondary: isDark ? colors.background : colors.foreground,
+        onSecondary: colors.accent.computeLuminance() > 0.5
+            ? Colors.black
+            : Colors.white,
         surface: colors.card,
         onSurface: colors.foreground,
         error: const Color(0xFFDC2626),

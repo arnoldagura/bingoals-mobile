@@ -13,8 +13,11 @@ import '../../../core/theme/colors.dart';
 import '../../../core/theme/typography.dart';
 import '../../../data/models/models.dart';
 import '../../../data/providers/boards_provider.dart';
-import '../../widgets/goal/goal_grid.dart';
+import '../../widgets/common/gradient_button.dart';
 import '../../widgets/common/gradient_mesh_background.dart';
+import '../../widgets/common/styled_bottom_sheet.dart';
+import '../../widgets/common/styled_text_field.dart';
+import '../../widgets/goal/goal_grid.dart';
 
 enum BoardViewMode { grid, vision }
 
@@ -63,41 +66,28 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
     final miniGoalTitleController = TextEditingController();
     final miniGoalPctController = TextEditingController();
 
-    showModalBottomSheet(
+    showStyledBottomSheet(
       context: context,
-      isScrollControlled: true,
       builder: (sheetContext) => Consumer(
         builder: (sheetContext, sheetRef, _) {
           final latestBoard =
               sheetRef.watch(boardDetailProvider(widget.boardId)).valueOrNull;
           final latestGoal = latestBoard?.goals[position] ?? goal;
 
-          return Padding(
-            padding: EdgeInsets.only(
-              bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
-            ),
-            child: Container(
-              padding: const EdgeInsets.all(24),
-              constraints: BoxConstraints(
-                maxHeight: MediaQuery.of(sheetContext).size.height * 0.75,
-              ),
-              child: SingleChildScrollView(
+          return StyledBottomSheetContent(
+            title: goal.isEmpty ? 'Add Goal' : 'Edit Goal',
+            showClose: true,
+            child: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      goal.isEmpty ? 'Add Goal' : 'Edit Goal',
-                      style: AppTypography.headlineSmall,
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
+                    StyledTextField(
                       controller: _goalTitleController,
                       autofocus: goal.isEmpty,
-                      decoration: const InputDecoration(
-                        hintText: 'Enter your goal...',
-                        labelText: 'Goal Title',
-                      ),
+                      hintText: 'Enter your goal...',
+                      labelText: 'Goal Title',
+                      prefixIcon: Icons.flag_outlined,
                       onSubmitted: (_) => _saveGoal(position),
                     ),
                     if (!latestGoal.isEmpty) ...[
@@ -291,7 +281,6 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
                   ],
                 ),
               ),
-            ),
           );
         },
       ),
@@ -318,23 +307,20 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(
+            StyledTextField(
               controller: titleCtrl,
               autofocus: true,
-              decoration: const InputDecoration(
-                hintText: 'Mini-goal title',
-                labelText: 'Title',
-              ),
+              hintText: 'Mini-goal title',
+              labelText: 'Title',
+              prefixIcon: Icons.check_circle_outline,
             ),
             const SizedBox(height: 12),
-            TextField(
+            StyledTextField(
               controller: pctCtrl,
               keyboardType: TextInputType.number,
-              decoration: InputDecoration(
-                hintText: '1-100',
-                labelText: 'Weight (%)',
-                helperText: '$remaining% remaining',
-              ),
+              hintText: '1-100',
+              labelText: 'Weight ($remaining% remaining)',
+              prefixIcon: Icons.percent,
             ),
           ],
         ),
@@ -387,23 +373,20 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(
+            StyledTextField(
               controller: titleCtrl,
               autofocus: true,
-              decoration: const InputDecoration(
-                hintText: 'Mini-goal title',
-                labelText: 'Title',
-              ),
+              hintText: 'Mini-goal title',
+              labelText: 'Title',
+              prefixIcon: Icons.check_circle_outline,
             ),
             const SizedBox(height: 12),
-            TextField(
+            StyledTextField(
               controller: pctCtrl,
               keyboardType: TextInputType.number,
-              decoration: InputDecoration(
-                hintText: '1-100',
-                labelText: 'Weight (%)',
-                helperText: '$remaining% available',
-              ),
+              hintText: '1-100',
+              labelText: 'Weight ($remaining% available)',
+              prefixIcon: Icons.percent,
             ),
           ],
         ),
@@ -445,57 +428,31 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
     final victoriesCtrl = TextEditingController(text: reflection?.victories);
     final notesCtrl = TextEditingController(text: reflection?.notes);
 
-    showModalBottomSheet(
+    showStyledBottomSheet(
       context: context,
-      isScrollControlled: true,
-      builder: (sheetContext) => Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
-        ),
-        child: Container(
-          padding: const EdgeInsets.all(24),
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(sheetContext).size.height * 0.8,
-          ),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(Icons.check_circle,
-                        color: AppColors.success, size: 24),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        goal.title ?? 'Goal',
-                        style: AppTypography.headlineSmall,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: () => Navigator.pop(sheetContext),
-                      icon: const Icon(Icons.close),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
+      builder: (sheetContext) => StyledBottomSheetContent(
+        title: goal.title ?? 'Goal',
+        showClose: true,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
                 if (reflection?.reflectionPrompt != null) ...[
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFFF7ED),
+                      color: Theme.of(sheetContext).colorScheme.secondaryContainer,
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
-                          color: const Color(0xFFFBBF24).withValues(alpha: 0.3)),
+                          color: Theme.of(sheetContext).colorScheme.secondary.withValues(alpha: 0.3)),
                     ),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(Icons.lightbulb_outline,
-                            color: Color(0xFFF59E0B), size: 18),
+                        Icon(Icons.lightbulb_outline,
+                            color: Theme.of(sheetContext).colorScheme.secondary, size: 18),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
@@ -509,41 +466,37 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  TextField(
+                  StyledTextField(
                     controller: answerCtrl,
                     maxLines: 2,
-                    decoration: const InputDecoration(
-                      labelText: 'Your Answer',
-                      hintText: 'Reflect on the prompt above...',
-                    ),
+                    labelText: 'Your Answer',
+                    hintText: 'Reflect on the prompt above...',
+                    prefixIcon: Icons.edit_outlined,
                   ),
                   const SizedBox(height: 16),
                 ],
-                TextField(
+                StyledTextField(
                   controller: victoriesCtrl,
                   maxLines: 2,
-                  decoration: const InputDecoration(
-                    labelText: 'Victories',
-                    hintText: 'What went well?',
-                  ),
+                  labelText: 'Victories',
+                  hintText: 'What went well?',
+                  prefixIcon: Icons.emoji_events_outlined,
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                StyledTextField(
                   controller: obstaclesCtrl,
                   maxLines: 2,
-                  decoration: const InputDecoration(
-                    labelText: 'Obstacles',
-                    hintText: 'What challenges did you face?',
-                  ),
+                  labelText: 'Obstacles',
+                  hintText: 'What challenges did you face?',
+                  prefixIcon: Icons.shield_outlined,
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                StyledTextField(
                   controller: notesCtrl,
                   maxLines: 2,
-                  decoration: const InputDecoration(
-                    labelText: 'Notes',
-                    hintText: 'Any other thoughts...',
-                  ),
+                  labelText: 'Notes',
+                  hintText: 'Any other thoughts...',
+                  prefixIcon: Icons.sticky_note_2_outlined,
                 ),
                 const SizedBox(height: 16),
                 SizedBox(
@@ -571,7 +524,8 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: ElevatedButton(
+                      child: GradientButton(
+                        label: 'Save Reflection',
                         onPressed: () async {
                           Navigator.pop(sheetContext);
                           try {
@@ -596,7 +550,6 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
                             _showError(e);
                           }
                         },
-                        child: const Text('Save Reflection'),
                       ),
                     ),
                   ],
@@ -604,7 +557,6 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
               ],
             ),
           ),
-        ),
       ),
     );
   }
@@ -650,9 +602,8 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
   }
 
   void _showMiniGoalChecklist(Board board, int position) {
-    showModalBottomSheet(
+    showStyledBottomSheet(
       context: context,
-      isScrollControlled: true,
       builder: (sheetContext) => Consumer(
         builder: (sheetContext, sheetRef, _) {
           final latestBoard =
@@ -661,32 +612,13 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
           final allComplete = latestGoal.miniGoals.isNotEmpty &&
               latestGoal.miniGoals.every((mg) => mg.isComplete);
 
-          return Padding(
-            padding: EdgeInsets.only(
-              bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
-            ),
-            child: Container(
-              padding: const EdgeInsets.all(24),
-              child: Column(
+          return StyledBottomSheetContent(
+            title: latestGoal.title ?? 'Goal',
+            showClose: true,
+            child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          latestGoal.title ?? 'Goal',
-                          style: AppTypography.headlineSmall,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      IconButton(
-                        onPressed: () => Navigator.pop(sheetContext),
-                        icon: const Icon(Icons.close),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
                   Row(
                     children: [
                       Expanded(
@@ -728,25 +660,20 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
                             style: AppTypography.caption),
                       )),
                   const SizedBox(height: 16),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: allComplete
-                          ? () {
-                              Navigator.pop(sheetContext);
-                              _showIconPhotoPicker(position,
-                                  completeFirst: true);
-                            }
-                          : null,
-                      icon: const Icon(Icons.check_circle_outline),
-                      label: Text(allComplete
-                          ? 'Complete Goal!'
-                          : 'Complete all mini-goals first'),
-                    ),
+                  GradientButton(
+                    label: allComplete
+                        ? 'Complete Goal!'
+                        : 'Complete all mini-goals first',
+                    onPressed: allComplete
+                        ? () {
+                            Navigator.pop(sheetContext);
+                            _showIconPhotoPicker(position,
+                                completeFirst: true);
+                          }
+                        : null,
                   ),
                 ],
               ),
-            ),
           );
         },
       ),
@@ -785,14 +712,10 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
       }
     }
 
-    showModalBottomSheet(
+    showStyledBottomSheet(
       context: context,
-      isScrollControlled: true,
-      builder: (sheetContext) => Container(
-        padding: const EdgeInsets.all(24),
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(sheetContext).size.height * 0.6,
-        ),
+      builder: (sheetContext) => StyledBottomSheetContent(
+        title: 'Add an Icon or Photo',
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -800,8 +723,11 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Add an Icon or Photo',
-                    style: AppTypography.headlineSmall),
+                Text(
+                  'Choose an icon to represent this achievement',
+                  style: AppTypography.bodySmall.copyWith(
+                      color: Theme.of(sheetContext).colorScheme.onSurface.withValues(alpha: 0.5)),
+                ),
                 TextButton(
                   onPressed: () async {
                     Navigator.pop(sheetContext);
@@ -811,13 +737,7 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 4),
-            Text(
-              'Choose an icon to represent this achievement',
-              style: AppTypography.bodySmall
-                  .copyWith(color: AppColors.textMutedLight),
-            ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             Flexible(
               child: GridView.builder(
                 shrinkWrap: true,
@@ -841,7 +761,7 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
                   },
                   child: Container(
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
+                      color: Theme.of(sheetContext).colorScheme.surfaceContainerHighest,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Center(

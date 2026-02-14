@@ -8,7 +8,10 @@ import '../../../core/utils/helpers.dart';
 import '../../../data/providers/auth_provider.dart';
 import '../../../data/providers/boards_provider.dart';
 import '../../widgets/common/glass_card.dart';
+import '../../widgets/common/gradient_button.dart';
 import '../../widgets/common/gradient_mesh_background.dart';
+import '../../widgets/common/styled_bottom_sheet.dart';
+import '../../widgets/common/styled_text_field.dart';
 import '../../widgets/dashboard/board_card.dart';
 import '../../widgets/dashboard/dashboard_stats.dart';
 
@@ -38,29 +41,40 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     _selectedCategory = null;
     _nameErrorText = null;
 
-    showDialog(
+    showStyledBottomSheet(
       context: context,
       builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Create New Boardsad'),
-          content: Column(
+        builder: (context, setDialogState) => StyledBottomSheetContent(
+          title: 'Create New Board',
+          showClose: true,
+          child: SingleChildScrollView(
+            child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              TextField(
+              StyledTextField(
                 controller: _newBoardController,
                 autofocus: true,
-                decoration: InputDecoration(
-                  hintText: 'e.g., Career Goals 2026',
-                  labelText: 'Board Name',
-                  errorText: _nameErrorText,
-                ),
+                hintText: 'e.g., Career Goals 2026',
+                labelText: 'Board Name',
+                prefixIcon: Icons.dashboard_outlined,
                 onChanged: (value) {
                   if (_nameErrorText != null) {
                     setDialogState(() => _nameErrorText = null);
                   }
                 },
               ),
+              if (_nameErrorText != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 6, left: 4),
+                  child: Text(
+                    _nameErrorText!,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
               const SizedBox(height: 20),
               Text(
                 'Category',
@@ -194,25 +208,22 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   );
                 }).toList(),
               ),
+              const SizedBox(height: 24),
+              GradientButton(
+                label: 'Create Board',
+                icon: Icons.add,
+                onPressed: () {
+                  final title = _newBoardController.text.trim();
+                  if (title.isEmpty) {
+                    setDialogState(() => _nameErrorText = 'Board Name cannot be empty');
+                  } else {
+                    _createBoard();
+                  }
+                },
+              ),
             ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                final title = _newBoardController.text.trim();
-                if (title.isEmpty) {
-                  setDialogState(() => _nameErrorText = 'Board Name cannot be empty');
-                } else {
-                  _createBoard(); 
-                }
-              },
-              child: const Text('Create'),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -234,42 +245,55 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     _newBoardController.text = currentTitle;
     _nameErrorText = null;
 
-    showDialog(
+    showStyledBottomSheet(
       context: context,
       builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Rename Board'),
-          content: TextField(
-            controller: _newBoardController,
-            autofocus: true,
-            decoration: InputDecoration(
-              labelText: 'Board Name',
-              errorText: _nameErrorText,
-            ),
-            onChanged: (value) {
-              if (_nameErrorText != null) {
-                setDialogState(() => _nameErrorText = null);
-              }
-            },
+        builder: (context, setDialogState) => StyledBottomSheetContent(
+          title: 'Rename Board',
+          showClose: true,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              StyledTextField(
+                controller: _newBoardController,
+                autofocus: true,
+                labelText: 'Board Name',
+                prefixIcon: Icons.edit_outlined,
+                onChanged: (value) {
+                  if (_nameErrorText != null) {
+                    setDialogState(() => _nameErrorText = null);
+                  }
+                },
+              ),
+              if (_nameErrorText != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 6, left: 4),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      _nameErrorText!,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ),
+              const SizedBox(height: 20),
+              GradientButton(
+                label: 'Rename',
+                onPressed: () async {
+                  final newTitle = _newBoardController.text.trim();
+                  if (newTitle.isEmpty) {
+                    setDialogState(() => _nameErrorText = 'Name cannot be empty');
+                    return;
+                  }
+                  Navigator.pop(context);
+                  await ref.read(boardActionsProvider).renameBoard(boardId, newTitle);
+                },
+              ),
+            ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                final newTitle = _newBoardController.text.trim();
-                if (newTitle.isEmpty) {
-                  setDialogState(() => _nameErrorText = 'Name cannot be empty');
-                  return;
-                }
-                Navigator.pop(context);
-                await ref.read(boardActionsProvider).renameBoard(boardId, newTitle);
-              },
-              child: const Text('Rename'),
-            ),
-          ],
         ),
       ),
     );
@@ -315,7 +339,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         backgroundColor: colorScheme.primary,
         onPressed: _showCreateBoardDialog,
         icon: const Icon(Icons.add),
-        foregroundColor: Colors.white,
+        foregroundColor: colorScheme.onPrimary,
         label: const Text('New Board'),
       ),
       body: SafeArea(
@@ -350,9 +374,22 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         ],
                       ),
                     ),
-                    IconButton(
-                      onPressed: () => context.push('/settings'),
-                      icon: const Icon(Icons.settings_outlined),
+                    GestureDetector(
+                      onTap: () => context.push('/settings'),
+                      child: CircleAvatar(
+                        radius: 20,
+                        backgroundColor:
+                            colorScheme.primary.withValues(alpha: 0.1),
+                        child: Text(
+                          authState.user != null &&
+                                  authState.user!.name.isNotEmpty
+                              ? authState.user!.name[0].toUpperCase()
+                              : '?',
+                          style: AppTypography.labelLarge.copyWith(
+                            color: colorScheme.primary,
+                          ),
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -373,7 +410,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Your Boardswew',
+                      'Your Boards',
                       style: AppTypography.headlineSmall.copyWith(
                         color: colorScheme.onSurface,
                       ),
@@ -440,7 +477,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       children: [
                         const Icon(Icons.error_outline, size: 48),
                         const SizedBox(height: 12),
-                        Text('Failed to load boardssd',
+                        Text('Failed to load boards',
                             style: AppTypography.bodyMedium),
                         const SizedBox(height: 12),
                         OutlinedButton(
@@ -550,10 +587,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
-            ElevatedButton.icon(
+            GradientButton(
+              label: 'Create Board',
+              icon: Icons.add,
               onPressed: _showCreateBoardDialog,
-              icon: const Icon(Icons.add),
-              label: const Text('Create Board'),
+              fullWidth: false,
             ),
           ],
         ),

@@ -3,10 +3,12 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/theme/colors.dart';
 import '../../../core/theme/typography.dart';
 import '../../../data/providers/auth_provider.dart';
 import '../../../router/app_router.dart';
+import '../../widgets/common/gradient_button.dart';
+import '../../widgets/common/gradient_mesh_background.dart';
+import '../../widgets/common/styled_text_field.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
@@ -47,9 +49,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
+    final colorScheme = Theme.of(context).colorScheme;
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
+    return GradientMeshScaffold(
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -59,31 +61,54 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SizedBox(height: 40),
-                // Header
+                // Logo
+                Center(
+                  child: Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      color: colorScheme.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(
+                        color: colorScheme.primary.withValues(alpha: 0.3),
+                        width: 2,
+                      ),
+                    ),
+                    child: Icon(
+                      Icons.grid_view_rounded,
+                      size: 36,
+                      color: colorScheme.primary,
+                    ),
+                  ).animate().fadeIn(duration: 400.ms).scale(
+                        begin: const Offset(0.8, 0.8),
+                        end: const Offset(1, 1),
+                      ),
+                ),
+                const SizedBox(height: 20),
                 Text(
                   'Create Account',
-                  style: AppTypography.headlineLarge,
+                  style: AppTypography.headlineLarge.copyWith(
+                    color: colorScheme.onSurface,
+                  ),
                   textAlign: TextAlign.center,
-                ).animate().fadeIn(duration: 400.ms),
+                ).animate(delay: 100.ms).fadeIn(),
                 const SizedBox(height: 8),
                 Text(
                   'Start tracking your goals',
                   style: AppTypography.bodyMedium.copyWith(
-                    color: AppColors.textSecondary,
+                    color: colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
                   textAlign: TextAlign.center,
                 ).animate(delay: 200.ms).fadeIn(),
                 const SizedBox(height: 40),
 
                 // Name field
-                TextFormField(
+                StyledTextField(
                   controller: _nameController,
                   textInputAction: TextInputAction.next,
-                  decoration: const InputDecoration(
-                    labelText: 'Name',
-                    hintText: 'Your name',
-                    prefixIcon: Icon(Icons.person_outline),
-                  ),
+                  labelText: 'Name',
+                  hintText: 'Your name',
+                  prefixIcon: Icons.person_outline,
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
                       return 'Name is required';
@@ -94,15 +119,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 const SizedBox(height: 16),
 
                 // Email field
-                TextFormField(
+                StyledTextField(
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
                   textInputAction: TextInputAction.next,
-                  decoration: const InputDecoration(
-                    labelText: 'Email',
-                    hintText: 'you@example.com',
-                    prefixIcon: Icon(Icons.email_outlined),
-                  ),
+                  labelText: 'Email',
+                  hintText: 'you@example.com',
+                  prefixIcon: Icons.email_outlined,
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
                       return 'Email is required';
@@ -116,26 +139,24 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 const SizedBox(height: 16),
 
                 // Password field
-                TextFormField(
+                StyledTextField(
                   controller: _passwordController,
                   obscureText: _obscurePassword,
                   textInputAction: TextInputAction.done,
-                  onFieldSubmitted: (_) => _register(),
-                  decoration: InputDecoration(
-                    labelText: 'Password',
-                    hintText: 'Min 6 characters',
-                    prefixIcon: const Icon(Icons.lock_outline),
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _obscurePassword
-                            ? Icons.visibility_off_outlined
-                            : Icons.visibility_outlined,
-                      ),
-                      onPressed: () {
-                        setState(() => _obscurePassword = !_obscurePassword);
-                      },
+                  labelText: 'Password',
+                  hintText: 'Min 6 characters',
+                  prefixIcon: Icons.lock_outline,
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscurePassword
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined,
                     ),
+                    onPressed: () {
+                      setState(() => _obscurePassword = !_obscurePassword);
+                    },
                   ),
+                  onSubmitted: (_) => _register(),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
                       return 'Password is required';
@@ -146,16 +167,15 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     return null;
                   },
                 ).animate(delay: 500.ms).fadeIn().slideY(begin: 0.2, end: 0),
-                const SizedBox(height: 8),
 
                 // Error message
                 if (authState.error != null)
                   Padding(
-                    padding: const EdgeInsets.only(top: 8),
+                    padding: const EdgeInsets.only(top: 12),
                     child: Text(
                       authState.error!,
                       style: AppTypography.bodySmall.copyWith(
-                        color: AppColors.error,
+                        color: colorScheme.error,
                       ),
                       textAlign: TextAlign.center,
                     ),
@@ -163,18 +183,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 const SizedBox(height: 24),
 
                 // Register button
-                SizedBox(
-                  height: 50,
-                  child: ElevatedButton(
-                    onPressed: authState.isLoading ? null : _register,
-                    child: authState.isLoading
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Text('Create Account'),
-                  ),
+                GradientButton(
+                  label: 'Create Account',
+                  onPressed: authState.isLoading ? null : _register,
+                  isLoading: authState.isLoading,
                 ).animate(delay: 600.ms).fadeIn(),
                 const SizedBox(height: 16),
 
@@ -185,7 +197,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     Text(
                       'Already have an account? ',
                       style: AppTypography.bodySmall.copyWith(
-                        color: AppColors.textSecondary,
+                        color: colorScheme.onSurface.withValues(alpha: 0.5),
                       ),
                     ),
                     GestureDetector(
@@ -193,7 +205,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       child: Text(
                         'Sign In',
                         style: AppTypography.bodySmall.copyWith(
-                          color: AppColors.gold,
+                          color: colorScheme.primary,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
