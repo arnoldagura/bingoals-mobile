@@ -45,6 +45,10 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>We need access to your photo library to upload a photo for your completed goal.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>We need access to your camera to take a photo for your completed goal.</string>
 	<!-- Google Sign-In: Replace with your reversed iOS client ID from Google Cloud Console -->
 	<key>CFBundleURLTypes</key>
 	<array>

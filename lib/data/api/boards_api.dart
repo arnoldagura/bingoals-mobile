@@ -6,8 +6,9 @@ import '../models/board.dart';
 import '../models/mini_goal.dart';
 import '../models/reflection.dart';
 import 'api_client.dart';
+import 'dart:developer' as dev;
 
-/// Boards API service
+
 final boardsApiProvider = Provider<BoardsApi>((ref) {
   return BoardsApi(ref.watch(apiClientProvider));
 });
@@ -17,10 +18,11 @@ class BoardsApi {
 
   BoardsApi(this._dio);
 
-  /// Get all boards (returns summaries)
+
   Future<List<BoardSummary>> getBoards() async {
     final response = await _dio.get(ApiConstants.boards);
     final list = response.data as List;
+    
     return list
         .map((json) => BoardSummary.fromJson(json as Map<String, dynamic>))
         .toList();
@@ -156,5 +158,43 @@ class BoardsApi {
       },
     );
     return Reflection.fromJson(response.data);
+  }
+
+  /// Clear a goal (reset tile to empty)
+  Future<void> clearGoal(String boardId, int position) async {
+    await _dio.put(
+      ApiConstants.updateGoal(boardId, position),
+      data: {
+        'title': '',
+        'icon': '',
+        'imageUrl': '',
+        'isCompleted': false,
+      },
+    );
+  }
+
+  /// Upload an image file and return the URL
+  Future<String> uploadImage(String filePath) async {
+    final formData = FormData.fromMap({
+      'image': await MultipartFile.fromFile(filePath),
+    });
+    final response = await _dio.post(ApiConstants.upload, data: formData);
+    return response.data['url'] as String;
+  }
+
+  /// Update a goal's icon and/or imageUrl
+  Future<void> updateGoalIcon(
+    String boardId,
+    int position, {
+    String? icon,
+    String? imageUrl,
+  }) async {
+    await _dio.put(
+      ApiConstants.updateGoal(boardId, position),
+      data: {
+        'icon': ?icon,
+        'imageUrl': ?imageUrl,
+      },
+    );
   }
 }

@@ -31,6 +31,8 @@ class ApiConstants {
   static String reflection(String boardId, int position) =>
       '/api/boards/$boardId/goals/$position/reflection';
 
+  static const String upload = '/api/upload';
+
   static const Duration connectTimeout = Duration(seconds: 30);
   static const Duration receiveTimeout = Duration(seconds: 30);
 

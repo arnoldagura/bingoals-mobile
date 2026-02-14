@@ -26,7 +26,7 @@ class Board {
   });
 
   int get goalCount =>
-      goals.where((g) => !g.isEmpty && !g.isGraceSquare).length;
+      goals.where((g) => !g.isGraceSquare).length;
 
   int get completedCount =>
       goals.where((g) => g.isCompleted && !g.isGraceSquare).length;

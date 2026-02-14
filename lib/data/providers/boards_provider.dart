@@ -88,6 +88,12 @@ class BoardActions {
     _ref.invalidate(boardSummariesProvider);
   }
 
+  Future<void> clearGoal(String boardId, int position) async {
+    await _api.clearGoal(boardId, position);
+    _ref.invalidate(boardDetailProvider(boardId));
+    _ref.invalidate(boardSummariesProvider);
+  }
+
   Future<Map<String, dynamic>> toggleGoalCompletion(
       String boardId, int position) async {
     final result = await _api.toggleGoal(boardId, position);
@@ -134,6 +140,27 @@ class BoardActions {
     await _api.deleteMiniGoal(boardId, position, miniGoalId);
     _ref.invalidate(boardDetailProvider(boardId));
     _ref.invalidate(boardSummariesProvider);
+  }
+
+  Future<void> updateGoalIcon(
+    String boardId,
+    int position, {
+    String? icon,
+    String? imageUrl,
+  }) async {
+    await _api.updateGoalIcon(boardId, position, icon: icon, imageUrl: imageUrl);
+    _ref.invalidate(boardDetailProvider(boardId));
+  }
+
+  Future<String> uploadGoalImage(
+    String boardId,
+    int position,
+    String filePath,
+  ) async {
+    final url = await _api.uploadImage(filePath);
+    await _api.updateGoalIcon(boardId, position, imageUrl: url);
+    _ref.invalidate(boardDetailProvider(boardId));
+    return url;
   }
 
   Future<void> upsertReflection(

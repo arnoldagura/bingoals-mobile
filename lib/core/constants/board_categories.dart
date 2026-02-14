@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Predefined board categories with icons and accent colors
+
 class BoardCategory {
   final String key;
   final String label;

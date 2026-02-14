@@ -11,7 +11,6 @@ class BoardCard extends StatelessWidget {
   final VoidCallback? onRename;
   final VoidCallback? onDelete;
   final VoidCallback? onSetDefault;
-  final int totalBoards;
 
   const BoardCard({
     super.key,
@@ -20,7 +19,6 @@ class BoardCard extends StatelessWidget {
     this.onRename,
     this.onDelete,
     this.onSetDefault,
-    this.totalBoards = 1,
   });
 
   @override
@@ -170,7 +168,7 @@ class BoardCard extends StatelessWidget {
                     Expanded(
                       child: _MiniGridPreview(
                         completed: board.completedCount,
-                        total: 25,
+                        gridSize: board.gridSize,
                       ),
                     ),
                   ],
@@ -213,12 +211,10 @@ class BoardCard extends StatelessWidget {
 
 class _MiniGridPreview extends StatelessWidget {
   final int completed;
-  final int total;
   final int gridSize;
 
   const _MiniGridPreview({
     required this.completed,
-    required this.total,
     required this.gridSize
   });
 

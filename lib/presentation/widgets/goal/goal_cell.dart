@@ -1,4 +1,6 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import '../../../core/constants/api_constants.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/typography.dart';
 import '../../../data/models/goal.dart';
@@ -9,6 +11,8 @@ class GoalCell extends StatelessWidget {
   final GoalStatus status;
   final bool isGraceSquare;
   final int progress;
+  final String? icon;
+  final String? imageUrl;
   final VoidCallback? onTap;
   final VoidCallback? onLongPress;
 
@@ -19,6 +23,8 @@ class GoalCell extends StatelessWidget {
     this.status = GoalStatus.notStarted,
     this.isGraceSquare = false,
     this.progress = 0,
+    this.icon,
+    this.imageUrl,
     this.onTap,
     this.onLongPress,
   });
@@ -34,10 +40,10 @@ class GoalCell extends StatelessWidget {
       onLongPress: onLongPress,
       child: Container(
         decoration: BoxDecoration(
-          color: _backgroundColor,
+          gradient: _backgroundGradient,
           border: Border.all(
             color: _borderColor,
-            width: 1,
+            width: status == GoalStatus.completed ? 1.5 : 1,
           ),
         ),
         child: isEmpty ? _buildEmptyCell() : _buildFilledCell(),
@@ -45,15 +51,28 @@ class GoalCell extends StatelessWidget {
     );
   }
 
-  Color get _backgroundColor {
-    if (isEmpty) return AppColors.goalCell;
+  LinearGradient get _backgroundGradient {
+    if (isEmpty) {
+      return const LinearGradient(colors: [AppColors.goalCell, AppColors.goalCell]);
+    }
     switch (status) {
       case GoalStatus.inProgress:
-        return const Color(0xFFFFF7ED);
+        return const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFFFFFBF5), Color(0xFFFFF3E0)],
+        );
       case GoalStatus.completed:
-        return const Color(0xFFF0FDF4);
+        if (imageUrl != null && imageUrl!.isNotEmpty) {
+          return const LinearGradient(colors: [Colors.transparent, Colors.transparent]);
+        }
+        return const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFFECFDF5), Color(0xFFD1FAE5)],
+        );
       case GoalStatus.notStarted:
-        return AppColors.goalCell;
+        return const LinearGradient(colors: [AppColors.goalCell, AppColors.goalCell]);
     }
   }
 
@@ -106,6 +125,119 @@ class GoalCell extends StatelessWidget {
   }
 
   Widget _buildFilledCell() {
+    // Completed with photo — show image as background
+    if (status == GoalStatus.completed && imageUrl != null && imageUrl!.isNotEmpty) {
+      return _buildPhotoCell();
+    }
+
+    // Completed with icon — show icon prominently
+    if (status == GoalStatus.completed && icon != null && icon!.isNotEmpty) {
+      return _buildIconCell();
+    }
+
+    // Default: text-based cell
+    return _buildTextCell();
+  }
+
+  Widget _buildPhotoCell() {
+    final fullUrl = imageUrl!.startsWith('http')
+        ? imageUrl!
+        : '${ApiConstants.baseUrl}$imageUrl';
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        CachedNetworkImage(
+          imageUrl: fullUrl,
+          fit: BoxFit.cover,
+          placeholder: (_, __) => Container(color: const Color(0xFFD1FAE5)),
+          errorWidget: (_, __, ___) => Container(
+            color: const Color(0xFFD1FAE5),
+            child: Icon(Icons.check_circle, color: AppColors.success, size: 24),
+          ),
+        ),
+        // Dark gradient overlay at bottom for text readability
+        Positioned(
+          left: 0,
+          right: 0,
+          bottom: 0,
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(4, 12, 4, 4),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Colors.transparent, Colors.black54],
+              ),
+            ),
+            child: Text(
+              goalTitle!,
+              style: AppTypography.caption.copyWith(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+                fontSize: 9,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ),
+        // Checkmark badge
+        Positioned(
+          top: 3,
+          right: 3,
+          child: Container(
+            padding: const EdgeInsets.all(1),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.check_circle, color: AppColors.success, size: 14),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildIconCell() {
+    return Stack(
+      children: [
+        Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                icon!,
+                style: const TextStyle(fontSize: 28),
+              ),
+              const SizedBox(height: 2),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: Text(
+                  goalTitle!,
+                  style: AppTypography.caption.copyWith(
+                    color: const Color(0xFF166534),
+                    fontWeight: FontWeight.w600,
+                    fontSize: 9,
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Positioned(
+          top: 3,
+          right: 3,
+          child: Icon(Icons.check_circle, color: AppColors.success, size: 14),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTextCell() {
     return Stack(
       children: [
         Center(
@@ -114,7 +246,9 @@ class GoalCell extends StatelessWidget {
             child: Text(
               goalTitle!,
               style: AppTypography.bodySmall.copyWith(
-                color: AppColors.textPrimaryLight,
+                color: status == GoalStatus.completed
+                    ? const Color(0xFF166534)
+                    : AppColors.textPrimaryLight,
                 fontWeight: FontWeight.w500,
               ),
               textAlign: TextAlign.center,
@@ -134,10 +268,10 @@ class GoalCell extends StatelessWidget {
             right: 4,
             bottom: 4,
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(2),
+              borderRadius: BorderRadius.circular(4),
               child: LinearProgressIndicator(
                 value: progress / 100,
-                minHeight: 3,
+                minHeight: 4,
                 backgroundColor: Colors.grey.shade200,
                 color: const Color(0xFFFBBF24),
               ),

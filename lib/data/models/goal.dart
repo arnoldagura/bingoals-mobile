@@ -34,6 +34,7 @@ class Goal {
   final bool isGraceSquare;
   final int progress;
   final DateTime? completedAt;
+  final String? icon;
   final String? imageUrl;
   final int position;
   final List<MiniGoal> miniGoals;
@@ -48,6 +49,7 @@ class Goal {
     this.isGraceSquare = false,
     this.progress = 0,
     this.completedAt,
+    this.icon,
     this.imageUrl,
     required this.position,
     this.miniGoals = const [],
@@ -67,6 +69,7 @@ class Goal {
     bool? isGraceSquare,
     int? progress,
     DateTime? completedAt,
+    String? icon,
     String? imageUrl,
     int? position,
     List<MiniGoal>? miniGoals,
@@ -81,6 +84,7 @@ class Goal {
       isGraceSquare: isGraceSquare ?? this.isGraceSquare,
       progress: progress ?? this.progress,
       completedAt: completedAt ?? this.completedAt,
+      icon: icon ?? this.icon,
       imageUrl: imageUrl ?? this.imageUrl,
       position: position ?? this.position,
       miniGoals: miniGoals ?? this.miniGoals,
@@ -105,6 +109,7 @@ class Goal {
       'isGraceSquare': isGraceSquare,
       'progress': progress,
       'completedAt': completedAt?.toIso8601String(),
+      'icon': icon,
       'imageUrl': imageUrl,
       'position': position,
       'miniGoals': miniGoals.map((mg) => mg.toJson()).toList(),
@@ -124,6 +129,7 @@ class Goal {
       completedAt: json['completedAt'] != null
           ? DateTime.parse(json['completedAt'] as String)
           : null,
+      icon: json['icon'] as String?,
       imageUrl: json['imageUrl'] as String?,
       position: json['position'] as int,
       miniGoals: json['miniGoals'] != null

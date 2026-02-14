@@ -440,7 +440,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       children: [
                         const Icon(Icons.error_outline, size: 48),
                         const SizedBox(height: 12),
-                        Text('Failed to load boards',
+                        Text('Failed to load boardssd',
                             style: AppTypography.bodyMedium),
                         const SizedBox(height: 12),
                         OutlinedButton(
@@ -489,7 +489,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           padding: const EdgeInsets.only(bottom: 16),
                           child: BoardCard(
                             board: board,
-                            totalBoards: boards.length,
                             onTap: () =>
                                 context.push('/board/${board.id}'),
                             onRename: () =>

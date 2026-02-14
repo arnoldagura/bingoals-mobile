@@ -10,8 +10,9 @@ PODS:
     - GoogleUtilities/UserDefaults (~> 8.0)
     - PromisesObjC (~> 2.4)
   - Flutter (1.0.0)
-  - flutter_secure_storage (6.0.0):
+  - flutter_secure_storage_darwin (10.0.0):
     - Flutter
+    - FlutterMacOS
   - google_sign_in_ios (0.0.1):
     - Flutter
     - FlutterMacOS
@@ -50,7 +51,7 @@ PODS:
 
 DEPENDENCIES:
   - Flutter (from `Flutter`)
-  - flutter_secure_storage (from `.symlinks/plugins/flutter_secure_storage/ios`)
+  - flutter_secure_storage_darwin (from `.symlinks/plugins/flutter_secure_storage_darwin/darwin`)
   - google_sign_in_ios (from `.symlinks/plugins/google_sign_in_ios/darwin`)
   - image_picker_ios (from `.symlinks/plugins/image_picker_ios/ios`)
   - share_plus (from `.symlinks/plugins/share_plus/ios`)
@@ -69,8 +70,8 @@ SPEC REPOS:
 EXTERNAL SOURCES:
   Flutter:
     :path: Flutter
-  flutter_secure_storage:
-    :path: ".symlinks/plugins/flutter_secure_storage/ios"
+  flutter_secure_storage_darwin:
+    :path: ".symlinks/plugins/flutter_secure_storage_darwin/darwin"
   google_sign_in_ios:
     :path: ".symlinks/plugins/google_sign_in_ios/darwin"
   image_picker_ios:
@@ -84,7 +85,7 @@ SPEC CHECKSUMS:
   AppAuth: 1c1a8afa7e12f2ec3a294d9882dfa5ab7d3cb063
   AppCheckCore: cc8fd0a3a230ddd401f326489c99990b013f0c4f
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
-  flutter_secure_storage: 1ed9476fba7e7a782b22888f956cce43e2c62f13
+  flutter_secure_storage_darwin: acdb3f316ed05a3e68f856e0353b133eec373a23
   google_sign_in_ios: 000870aa06da9b28d1d0bf7ef70ff0213059dd28
   GoogleSignIn: fcee2257188d5eda57a5e2b6a715550ffff9206d
   GoogleUtilities: 00c88b9a86066ef77f0da2fab05f65d7768ed8e1

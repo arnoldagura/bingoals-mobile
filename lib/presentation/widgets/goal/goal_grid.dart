@@ -50,6 +50,8 @@ class GoalGrid extends StatelessWidget {
                         status: goal.status,
                         isGraceSquare: goal.isGraceSquare,
                         progress: goal.progress,
+                        icon: goal.icon,
+                        imageUrl: goal.imageUrl,
                         onTap: goal.isGraceSquare
                             ? null
                             : (onCellTap != null
@@ -80,6 +82,9 @@ class GoalGrid extends StatelessWidget {
 
   int get totalCount => goals.length;
 
+  int get totalNonGraceCount =>
+      goals.where((g) => !g.isGraceSquare).length;
+
   double get completionPercentage =>
-      filledCount > 0 ? (completedCount / filledCount) * 100 : 0;
+      totalNonGraceCount > 0 ? (completedCount / totalNonGraceCount) * 100 : 0;
 }

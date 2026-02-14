@@ -1,11 +1,14 @@
 import 'dart:math';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:confetti/confetti.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
+import '../../../core/constants/api_constants.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/typography.dart';
 import '../../../data/models/models.dart';
@@ -238,6 +241,53 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
                         ),
                       ],
                     ),
+                    if (!goal.isEmpty) ...[
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: TextButton.icon(
+                          onPressed: () {
+                            showDialog(
+                              context: sheetContext,
+                              builder: (dialogCtx) => AlertDialog(
+                                title: const Text('Delete Goal?'),
+                                content: const Text(
+                                    'This will clear the goal, its mini-goals, and reflection. This cannot be undone.'),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.pop(dialogCtx),
+                                    child: const Text('Cancel'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () async {
+                                      Navigator.pop(dialogCtx);
+                                      Navigator.pop(sheetContext);
+                                      try {
+                                        await ref
+                                            .read(boardActionsProvider)
+                                            .clearGoal(widget.boardId,
+                                                position);
+                                      } catch (e) {
+                                        _showError(e);
+                                      }
+                                    },
+                                    child: Text('Delete',
+                                        style: TextStyle(
+                                            color: Colors.red.shade700)),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                          icon: Icon(Icons.delete_outline,
+                              size: 18, color: Colors.red.shade700),
+                          label: Text('Delete Goal',
+                              style:
+                                  TextStyle(color: Colors.red.shade700)),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -495,7 +545,19 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
                     hintText: 'Any other thoughts...',
                   ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(sheetContext);
+                      _showIconPhotoPicker(position);
+                    },
+                    icon: const Icon(Icons.image_outlined, size: 18),
+                    label: const Text('Change Icon / Photo'),
+                  ),
+                ),
+                const SizedBox(height: 12),
                 Row(
                   children: [
                     Expanded(
@@ -585,6 +647,242 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
         duration: const Duration(seconds: 3),
       ),
     );
+  }
+
+  void _showMiniGoalChecklist(Board board, int position) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (sheetContext) => Consumer(
+        builder: (sheetContext, sheetRef, _) {
+          final latestBoard =
+              sheetRef.watch(boardDetailProvider(widget.boardId)).valueOrNull;
+          final latestGoal = latestBoard?.goals[position] ?? board.goals[position];
+          final allComplete = latestGoal.miniGoals.isNotEmpty &&
+              latestGoal.miniGoals.every((mg) => mg.isComplete);
+
+          return Padding(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
+            ),
+            child: Container(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          latestGoal.title ?? 'Goal',
+                          style: AppTypography.headlineSmall,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.pop(sheetContext),
+                        icon: const Icon(Icons.close),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(4),
+                          child: LinearProgressIndicator(
+                            value: latestGoal.progress / 100,
+                            minHeight: 6,
+                            backgroundColor: Colors.grey.shade200,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text('${latestGoal.progress}%',
+                          style: AppTypography.labelSmall),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  ...latestGoal.miniGoals.map((mg) => CheckboxListTile(
+                        contentPadding: EdgeInsets.zero,
+                        value: mg.isComplete,
+                        onChanged: (_) async {
+                          try {
+                            await ref.read(boardActionsProvider).toggleMiniGoal(
+                                widget.boardId, position, mg.id);
+                          } catch (e) {
+                            _showError(e);
+                          }
+                        },
+                        title: Text(
+                          mg.title,
+                          style: TextStyle(
+                            decoration: mg.isComplete
+                                ? TextDecoration.lineThrough
+                                : null,
+                          ),
+                        ),
+                        subtitle: Text('${mg.percentage}%',
+                            style: AppTypography.caption),
+                      )),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: allComplete
+                          ? () {
+                              Navigator.pop(sheetContext);
+                              _showIconPhotoPicker(position,
+                                  completeFirst: true);
+                            }
+                          : null,
+                      icon: const Icon(Icons.check_circle_outline),
+                      label: Text(allComplete
+                          ? 'Complete Goal!'
+                          : 'Complete all mini-goals first'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  static const _celebrationIcons = [
+    '🏆', '⭐', '🔥', '🎯', '💪', '📚', '🎨', '🏃', '💰', '🧘',
+    '✈️', '🎵', '💡', '🌱', '❤️', '🎉', '🏠', '🍎', '⚡', '🌟',
+    '🎓', '💼', '🏋️', '🧠', '🌍', '📝', '🔑', '🎭', '🚀', '👑',
+  ];
+
+  /// Shows the icon/photo picker bottom sheet.
+  /// If [completeFirst] is true, toggles goal completion before setting
+  /// the icon/photo (used when completing a goal for the first time).
+  void _showIconPhotoPicker(int position, {bool completeFirst = false}) {
+    var completionHandled = false;
+
+    Future<void> handleCompletion() async {
+      if (!completeFirst || completionHandled) return;
+      completionHandled = true;
+      try {
+        final result = await ref
+            .read(boardActionsProvider)
+            .toggleGoalCompletion(widget.boardId, position);
+        if (!mounted) return;
+        _confettiController.play();
+        final milestones =
+            (result['milestones'] as List?)?.cast<String>() ?? [];
+        if (milestones.isNotEmpty) {
+          _showMilestoneCelebration(
+              milestones, result['gemsAwarded'] as int? ?? 0);
+        }
+      } catch (e) {
+        _showError(e);
+      }
+    }
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (sheetContext) => Container(
+        padding: const EdgeInsets.all(24),
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(sheetContext).size.height * 0.6,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Add an Icon or Photo',
+                    style: AppTypography.headlineSmall),
+                TextButton(
+                  onPressed: () async {
+                    Navigator.pop(sheetContext);
+                    await handleCompletion();
+                  },
+                  child: const Text('Skip'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Choose an icon to represent this achievement',
+              style: AppTypography.bodySmall
+                  .copyWith(color: AppColors.textMutedLight),
+            ),
+            const SizedBox(height: 16),
+            Flexible(
+              child: GridView.builder(
+                shrinkWrap: true,
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 6,
+                  mainAxisSpacing: 8,
+                  crossAxisSpacing: 8,
+                ),
+                itemCount: _celebrationIcons.length,
+                itemBuilder: (_, i) => GestureDetector(
+                  onTap: () async {
+                    Navigator.pop(sheetContext);
+                    await handleCompletion();
+                    try {
+                      await ref.read(boardActionsProvider).updateGoalIcon(
+                          widget.boardId, position,
+                          icon: _celebrationIcons[i]);
+                    } catch (e) {
+                      _showError(e);
+                    }
+                  },
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Center(
+                      child: Text(_celebrationIcons[i],
+                          style: const TextStyle(fontSize: 24)),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () async {
+                  final picker = ImagePicker();
+                  final image = await picker.pickImage(
+                    source: ImageSource.gallery,
+                    maxWidth: 800,
+                    maxHeight: 800,
+                    imageQuality: 85,
+                  );
+                  if (image == null) return;
+                  if (!mounted) return;
+                  Navigator.pop(sheetContext);
+                  await handleCompletion();
+                  try {
+                    await ref.read(boardActionsProvider).uploadGoalImage(
+                        widget.boardId, position, image.path);
+                  } catch (e) {
+                    _showError(e);
+                  }
+                },
+                icon: const Icon(Icons.photo_library_outlined),
+                label: const Text('Upload Photo'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ).then((_) => handleCompletion());
   }
 
   Future<void> _saveGoal(int position) async {
@@ -828,28 +1126,27 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
             },
             onCellLongPress: (index) async {
               final goal = board.goals[index];
-              if (!goal.isEmpty) {
-                try {
-                  final result = await ref
-                      .read(boardActionsProvider)
-                      .toggleGoalCompletion(widget.boardId, index);
+              if (goal.isEmpty) return;
 
-                  if (!mounted) return;
+              // Has mini-goals and not yet completed → show checklist
+              if (goal.miniGoals.isNotEmpty && !goal.isCompleted) {
+                _showMiniGoalChecklist(board, index);
+                return;
+              }
 
-                  if (goal.isInProgress) {
-                    _confettiController.play();
-                  }
+              // Not completed → show picker first, then complete
+              if (!goal.isCompleted) {
+                _showIconPhotoPicker(index, completeFirst: true);
+                return;
+              }
 
-                  final milestones = (result['milestones'] as List?)
-                          ?.cast<String>() ??
-                      [];
-                  if (milestones.isNotEmpty) {
-                    _showMilestoneCelebration(milestones,
-                        result['gemsAwarded'] as int? ?? 0);
-                  }
-                } catch (e) {
-                  _showError(e);
-                }
+              // Already completed → uncomplete directly
+              try {
+                await ref
+                    .read(boardActionsProvider)
+                    .toggleGoalCompletion(widget.boardId, index);
+              } catch (e) {
+                _showError(e);
               }
             },
           ),
@@ -911,6 +1208,9 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
   }
 
   Widget _buildVisionCard(Goal goal, ColorScheme colorScheme) {
+    final hasPhoto = goal.imageUrl != null && goal.imageUrl!.isNotEmpty;
+    final hasIcon = goal.icon != null && goal.icon!.isNotEmpty;
+
     return Container(
       decoration: BoxDecoration(
         color: colorScheme.surface,
@@ -923,24 +1223,27 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
           ),
         ],
       ),
+      clipBehavior: Clip.antiAlias,
       child: Column(
         children: [
           Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                color: colorScheme.primary.withValues(alpha: 0.1),
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(16),
-                ),
-              ),
-              child: Center(
-                child: Icon(
-                  Icons.check_circle,
-                  size: 48,
-                  color: colorScheme.primary,
-                ),
-              ),
-            ),
+            child: hasPhoto
+                ? _buildVisionCardPhoto(goal)
+                : Container(
+                    decoration: BoxDecoration(
+                      color: colorScheme.primary.withValues(alpha: 0.1),
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(16),
+                      ),
+                    ),
+                    child: Center(
+                      child: hasIcon
+                          ? Text(goal.icon!,
+                              style: const TextStyle(fontSize: 48))
+                          : Icon(Icons.check_circle,
+                              size: 48, color: colorScheme.primary),
+                    ),
+                  ),
           ),
           Padding(
             padding: const EdgeInsets.all(12),
@@ -955,6 +1258,25 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildVisionCardPhoto(Goal goal) {
+    final fullUrl = goal.imageUrl!.startsWith('http')
+        ? goal.imageUrl!
+        : '${ApiConstants.baseUrl}${goal.imageUrl}';
+    return CachedNetworkImage(
+      imageUrl: fullUrl,
+      fit: BoxFit.cover,
+      width: double.infinity,
+      placeholder: (_, __) => Container(
+        color: Colors.grey.shade200,
+        child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+      ),
+      errorWidget: (_, __, ___) => Container(
+        color: Colors.grey.shade200,
+        child: const Icon(Icons.broken_image_outlined, size: 32),
       ),
     );
   }
