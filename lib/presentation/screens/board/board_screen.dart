@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:confetti/confetti.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
@@ -12,11 +13,14 @@ import '../../../core/constants/api_constants.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/typography.dart';
 import '../../../data/models/models.dart';
+import '../../../data/providers/auth_provider.dart';
 import '../../../data/providers/boards_provider.dart';
+import '../../../data/providers/shared_board_providers.dart';
 import '../../widgets/common/gradient_button.dart';
 import '../../widgets/common/gradient_mesh_background.dart';
 import '../../widgets/common/styled_bottom_sheet.dart';
 import '../../widgets/common/styled_text_field.dart';
+import '../../widgets/common/user_avatar.dart';
 import '../../widgets/goal/goal_grid.dart';
 
 enum BoardViewMode { grid, vision }
@@ -511,6 +515,13 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
+                if (board.isShared) ...[
+                  _ReactionRow(
+                    goalId: goal.id,
+                    boardActionsProvider: boardActionsProvider,
+                  ),
+                  const SizedBox(height: 12),
+                ],
                 Row(
                   children: [
                     Expanded(
@@ -833,6 +844,224 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
     }
   }
 
+  void _showInviteSheet() async {
+    // Generate invite immediately, then show the code
+    try {
+      final invite =
+          await ref.read(boardActionsProvider).createInvite(widget.boardId);
+      if (!mounted) return;
+
+      showStyledBottomSheet(
+        context: context,
+        builder: (sheetContext) => StyledBottomSheetContent(
+          title: 'Invite to Board',
+          showClose: true,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Share this invite code with others.',
+                style: AppTypography.bodySmall.copyWith(
+                  color: Theme.of(sheetContext)
+                      .colorScheme
+                      .onSurface
+                      .withValues(alpha: 0.6),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Theme.of(sheetContext)
+                      .colorScheme
+                      .primaryContainer
+                      .withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Theme.of(sheetContext)
+                        .colorScheme
+                        .primary
+                        .withValues(alpha: 0.3),
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    Text(
+                      invite.inviteCode,
+                      style: AppTypography.headlineMedium.copyWith(
+                        color: Theme.of(sheetContext).colorScheme.primary,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 2,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Share this code with others',
+                      style: AppTypography.caption.copyWith(
+                        color: Theme.of(sheetContext)
+                            .colorScheme
+                            .onSurface
+                            .withValues(alpha: 0.5),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    Clipboard.setData(
+                        ClipboardData(text: invite.inviteCode));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                          content: Text('Invite code copied!')),
+                    );
+                  },
+                  icon: const Icon(Icons.copy, size: 18),
+                  label: const Text('Copy Code'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    } catch (e) {
+      _showError(e);
+    }
+  }
+
+  void _showMembersSheet(Board board) {
+    final currentUserId = ref.read(authProvider).user?.id;
+    final isOwner =
+        board.members.any((m) => m.id == currentUserId && m.isOwner);
+
+    showStyledBottomSheet(
+      context: context,
+      builder: (sheetContext) => StyledBottomSheetContent(
+        title: 'Members (${board.members.length})',
+        showClose: true,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ...board.members.map((member) => Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Row(
+                    children: [
+                      UserAvatar(
+                        imageUrl: member.avatarUrl.isNotEmpty
+                            ? member.avatarUrl
+                            : null,
+                        initials: member.initials,
+                        radius: 20,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              member.displayLabel,
+                              style: AppTypography.bodyLarge.copyWith(
+                                color: Theme.of(sheetContext)
+                                    .colorScheme
+                                    .onSurface,
+                              ),
+                            ),
+                            if (member.isOwner)
+                              Text(
+                                'Owner',
+                                style: AppTypography.caption.copyWith(
+                                  color: Theme.of(sheetContext)
+                                      .colorScheme
+                                      .primary,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                      if (isOwner &&
+                          !member.isOwner &&
+                          member.id != currentUserId)
+                        IconButton(
+                          icon: Icon(Icons.person_remove_outlined,
+                              size: 20,
+                              color: Theme.of(sheetContext)
+                                  .colorScheme
+                                  .error),
+                          onPressed: () async {
+                            Navigator.pop(sheetContext);
+                            try {
+                              await ref
+                                  .read(boardActionsProvider)
+                                  .removeMember(
+                                      widget.boardId, member.id);
+                            } catch (e) {
+                              _showError(e);
+                            }
+                          },
+                        ),
+                    ],
+                  ),
+                )),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.pop(sheetContext);
+                  _showActivityFeed();
+                },
+                icon: const Icon(Icons.history_outlined, size: 18),
+                label: const Text('Activity'),
+              ),
+            ),
+            const SizedBox(height: 8),
+            if (isOwner)
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.pop(sheetContext);
+                    _showInviteSheet();
+                  },
+                  icon: const Icon(Icons.person_add_outlined, size: 18),
+                  label: const Text('Invite Members'),
+                ),
+              )
+            else
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor:
+                        Theme.of(sheetContext).colorScheme.error,
+                    side: BorderSide(
+                        color: Theme.of(sheetContext).colorScheme.error),
+                  ),
+                  onPressed: () async {
+                    Navigator.pop(sheetContext);
+                    try {
+                      await ref
+                          .read(boardActionsProvider)
+                          .leaveBoard(widget.boardId);
+                      if (mounted) context.go('/');
+                    } catch (e) {
+                      _showError(e);
+                    }
+                  },
+                  icon: const Icon(Icons.logout, size: 18),
+                  label: const Text('Leave Board'),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _saveGoal(int position) async {
     final title = _goalTitleController.text.trim();
     Navigator.pop(context);
@@ -907,27 +1136,46 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
 
   Widget _buildHeader(Board board, ColorScheme colorScheme) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(8, 8, 16, 16),
+      padding: const EdgeInsets.fromLTRB(8, 8, 16, 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Row 1: Back + type chip + actions
           Row(
             children: [
               IconButton(
                 onPressed: () => context.go('/'),
                 icon: const Icon(Icons.arrow_back),
               ),
-              Expanded(
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: board.isShared
+                      ? Colors.green.withValues(alpha: 0.15)
+                      : colorScheme.primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
                 child: Text(
-                  board.title,
-                  style: AppTypography.headlineMedium.copyWith(
-                    color: colorScheme.onSurface,
+                  board.isShared ? 'Shared' : 'Personal',
+                  style: AppTypography.caption.copyWith(
+                    color: board.isShared ? Colors.green : colorScheme.primary,
+                    fontWeight: FontWeight.w600,
                   ),
-                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-              _buildViewToggle(colorScheme),
-              const SizedBox(width: 8),
+              const Spacer(),
+              if (board.isShared) ...[
+                IconButton(
+                  onPressed: _showInviteSheet,
+                  icon: const Icon(Icons.person_add_outlined, size: 22),
+                  tooltip: 'Invite',
+                ),
+                IconButton(
+                  onPressed: () => _showMembersSheet(board),
+                  icon: const Icon(Icons.group_outlined),
+                  tooltip: 'Members',
+                ),
+              ],
               IconButton(
                 onPressed: () {
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -939,31 +1187,58 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
               ),
             ],
           ),
+          // Title: full width, wraps freely
           Padding(
-            padding: const EdgeInsets.only(left: 48),
+            padding: const EdgeInsets.fromLTRB(16, 4, 0, 4),
+            child: Text(
+              board.title,
+              style: AppTypography.headlineMedium.copyWith(
+                color: colorScheme.onSurface,
+              ),
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          // Stats + View toggle
+          Padding(
+            padding: const EdgeInsets.only(left: 16),
             child: Row(
               children: [
-                Text(
-                  '${board.year}',
-                  style: AppTypography.bodySmall.copyWith(
-                    color: colorScheme.onSurface.withValues(alpha: 0.6),
+                Expanded(
+                  child: Row(
+                    children: [
+                      Text(
+                        '${board.year}',
+                        style: AppTypography.bodySmall.copyWith(
+                          color: colorScheme.onSurface.withValues(alpha: 0.6),
+                        ),
+                      ),
+                      _dot(colorScheme),
+                      Flexible(
+                        child: Text(
+                          '${board.completedCount}/${board.goalCount} complete',
+                          style: AppTypography.bodySmall.copyWith(
+                            color: colorScheme.onSurface.withValues(alpha: 0.6),
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      _dot(colorScheme),
+                      Text(
+                        '${board.progressPercent}%',
+                        style: AppTypography.bodySmall.copyWith(
+                          color: colorScheme.onSurface,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      if (board.isShared && board.members.isNotEmpty) ...[
+                        _dot(colorScheme),
+                        _buildMemberAvatars(board.members, colorScheme),
+                      ],
+                    ],
                   ),
                 ),
-                _dot(colorScheme),
-                Text(
-                  '${board.completedCount}/${board.goalCount} complete',
-                  style: AppTypography.bodySmall.copyWith(
-                    color: colorScheme.onSurface.withValues(alpha: 0.6),
-                  ),
-                ),
-                _dot(colorScheme),
-                Text(
-                  '${board.progressPercent}%',
-                  style: AppTypography.bodySmall.copyWith(
-                    color: colorScheme.onSurface,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+                _buildViewToggle(colorScheme),
               ],
             ),
           ),
@@ -984,6 +1259,171 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
         ),
       ),
     );
+  }
+
+  Widget _buildMemberAvatars(List<MemberInfo> members, ColorScheme colorScheme) {
+    const maxShow = 3;
+    final show = members.take(maxShow).toList();
+    final extra = members.length - maxShow;
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          width: show.length * 18.0 + 6,
+          height: 22,
+          child: Stack(
+            children: [
+              for (var i = 0; i < show.length; i++)
+                Positioned(
+                  left: i * 14.0,
+                  child: UserAvatar(
+                    imageUrl: show[i].avatarUrl.isNotEmpty
+                        ? show[i].avatarUrl
+                        : null,
+                    initials: show[i].initials,
+                    radius: 11,
+                  ),
+                ),
+            ],
+          ),
+        ),
+        if (extra > 0)
+          Text(
+            '+$extra',
+            style: AppTypography.caption.copyWith(
+              color: colorScheme.onSurface.withValues(alpha: 0.5),
+              fontSize: 11,
+            ),
+          ),
+      ],
+    );
+  }
+
+  void _showActivityFeed() {
+    showStyledBottomSheet(
+      context: context,
+      builder: (sheetContext) => Consumer(
+        builder: (sheetContext, sheetRef, _) {
+          final activity =
+              sheetRef.watch(boardActivityProvider(widget.boardId));
+          return StyledBottomSheetContent(
+            title: 'Activity',
+            showClose: true,
+            child: activity.when(
+              loading: () => const SizedBox(
+                height: 100,
+                child: Center(child: CircularProgressIndicator()),
+              ),
+              error: (_, __) => const SizedBox(
+                height: 100,
+                child: Center(child: Text('Failed to load activity')),
+              ),
+              data: (page) {
+                if (page.activities.isEmpty) {
+                  return SizedBox(
+                    height: 100,
+                    child: Center(
+                      child: Text(
+                        'No activity yet',
+                        style: AppTypography.bodySmall.copyWith(
+                          color: Theme.of(sheetContext)
+                              .colorScheme
+                              .onSurface
+                              .withValues(alpha: 0.5),
+                        ),
+                      ),
+                    ),
+                  );
+                }
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: page.activities.map((a) {
+                    final userName = a.user?.displayLabel ?? 'Someone';
+                    final icon = _activityIcon(a.actionType);
+                    final desc = _activityDescription(a.actionType, userName);
+                    final ago = _timeAgo(a.createdAt);
+
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(icon, size: 18,
+                              color: Theme.of(sheetContext)
+                                  .colorScheme
+                                  .primary),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(desc,
+                                    style: AppTypography.bodySmall.copyWith(
+                                      color: Theme.of(sheetContext)
+                                          .colorScheme
+                                          .onSurface,
+                                    )),
+                                Text(ago,
+                                    style: AppTypography.caption.copyWith(
+                                      color: Theme.of(sheetContext)
+                                          .colorScheme
+                                          .onSurface
+                                          .withValues(alpha: 0.4),
+                                      fontSize: 11,
+                                    )),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                );
+              },
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  IconData _activityIcon(String actionType) {
+    switch (actionType) {
+      case 'goal_completed':
+        return Icons.check_circle_outline;
+      case 'member_joined':
+        return Icons.person_add_outlined;
+      case 'member_left':
+        return Icons.person_remove_outlined;
+      case 'reaction':
+        return Icons.favorite_outline;
+      default:
+        return Icons.info_outline;
+    }
+  }
+
+  String _activityDescription(String actionType, String userName) {
+    switch (actionType) {
+      case 'goal_completed':
+        return '$userName completed a goal';
+      case 'member_joined':
+        return '$userName joined the board';
+      case 'member_left':
+        return '$userName left the board';
+      case 'reaction':
+        return '$userName reacted to a goal';
+      default:
+        return '$userName performed an action';
+    }
+  }
+
+  String _timeAgo(DateTime date) {
+    final diff = DateTime.now().difference(date);
+    if (diff.inDays > 0) return '${diff.inDays}d ago';
+    if (diff.inHours > 0) return '${diff.inHours}h ago';
+    if (diff.inMinutes > 0) return '${diff.inMinutes}m ago';
+    return 'Just now';
   }
 
   Widget _buildViewToggle(ColorScheme colorScheme) {
@@ -1237,6 +1677,74 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
         color: Colors.grey.shade200,
         child: const Icon(Icons.broken_image_outlined, size: 32),
       ),
+    );
+  }
+}
+
+class _ReactionRow extends ConsumerStatefulWidget {
+  final String goalId;
+  final ProviderListenable<BoardActions> boardActionsProvider;
+
+  const _ReactionRow({
+    required this.goalId,
+    required this.boardActionsProvider,
+  });
+
+  @override
+  ConsumerState<_ReactionRow> createState() => _ReactionRowState();
+}
+
+class _ReactionRowState extends ConsumerState<_ReactionRow> {
+  static const _reactions = [
+    ('fire', '🔥'),
+    ('heart', '❤️'),
+    ('clap', '👏'),
+    ('star', '⭐'),
+  ];
+
+  String? _selectedType;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: _reactions.map((r) {
+        final isSelected = _selectedType == r.$1;
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 6),
+          child: GestureDetector(
+            onTap: () async {
+              try {
+                final result = await ref
+                    .read(widget.boardActionsProvider)
+                    .addReaction(widget.goalId, r.$1);
+                if (mounted) {
+                  final action = result['action'] as String?;
+                  setState(() {
+                    _selectedType = action == 'added' ? r.$1 : null;
+                  });
+                }
+              } catch (_) {}
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? colorScheme.primary.withValues(alpha: 0.1)
+                    : colorScheme.onSurface.withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: isSelected
+                      ? colorScheme.primary.withValues(alpha: 0.3)
+                      : Colors.transparent,
+                ),
+              ),
+              child: Text(r.$2, style: const TextStyle(fontSize: 20)),
+            ),
+          ),
+        );
+      }).toList(),
     );
   }
 }

@@ -9,6 +9,7 @@ import '../presentation/screens/login/register_screen.dart';
 import '../presentation/screens/onboarding/onboarding_screen.dart';
 import '../presentation/screens/dashboard/dashboard_screen.dart';
 import '../presentation/screens/board/board_screen.dart';
+import '../presentation/screens/notifications/notifications_screen.dart';
 import '../presentation/screens/settings/settings_screen.dart';
 import '../presentation/screens/vision_board/vision_board_screen.dart';
 
@@ -20,6 +21,7 @@ class AppRoutes {
   static const String dashboard = '/';
   static const String board = '/board/:boardId';
   static const String visionBoard = '/vision-board';
+  static const String notifications = '/notifications';
   static const String settings = '/settings';
 
   static String boardPath(String boardId) => '/board/$boardId';
@@ -108,6 +110,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.visionBoard,
         name: 'visionBoard',
         builder: (context, state) => const VisionBoardScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.notifications,
+        name: 'notifications',
+        builder: (context, state) => const NotificationsScreen(),
       ),
       GoRoute(
         path: AppRoutes.settings,

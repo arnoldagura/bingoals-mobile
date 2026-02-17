@@ -7,11 +7,13 @@ import '../../../core/theme/typography.dart';
 import '../../../core/utils/helpers.dart';
 import '../../../data/providers/auth_provider.dart';
 import '../../../data/providers/boards_provider.dart';
+import '../../../data/providers/notifications_provider.dart';
 import '../../widgets/common/glass_card.dart';
 import '../../widgets/common/gradient_button.dart';
 import '../../widgets/common/gradient_mesh_background.dart';
 import '../../widgets/common/styled_bottom_sheet.dart';
 import '../../widgets/common/styled_text_field.dart';
+import '../../widgets/common/user_avatar.dart';
 import '../../widgets/dashboard/board_card.dart';
 import '../../widgets/dashboard/dashboard_stats.dart';
 
@@ -28,6 +30,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   String? _selectedCategory;
   String? _filterCategory;
   String? _nameErrorText;
+  String _boardType = 'personal';
+  int _maxMembers = 5;
 
   @override
   void dispose() {
@@ -40,6 +44,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     _selectedGridSize = 5;
     _selectedCategory = null;
     _nameErrorText = null;
+    _boardType = 'personal';
+    _maxMembers = 5;
 
     showStyledBottomSheet(
       context: context,
@@ -52,6 +58,54 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Text(
+                'Quick Start',
+                style: AppTypography.labelMedium.copyWith(
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: BoardPreset.all.map((preset) {
+                  return GestureDetector(
+                    onTap: () => setDialogState(() {
+                      _newBoardController.text = preset.suggestedTitle;
+                      _selectedCategory = preset.category;
+                      _boardType = preset.boardType;
+                      _maxMembers = preset.maxMembers;
+                      _selectedGridSize = preset.gridSize;
+                    }),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: preset.color.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: preset.color.withValues(alpha: 0.3),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(preset.icon, size: 16, color: preset.color),
+                          const SizedBox(width: 4),
+                          Text(
+                            preset.label,
+                            style: AppTypography.caption.copyWith(
+                              color: preset.color,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 20),
               StyledTextField(
                 controller: _newBoardController,
                 autofocus: true,
@@ -208,6 +262,128 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   );
                 }).toList(),
               ),
+              const SizedBox(height: 20),
+              Text(
+                'Board Type',
+                style: AppTypography.labelMedium.copyWith(
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => setDialogState(() => _boardType = 'personal'),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        decoration: BoxDecoration(
+                          color: _boardType == 'personal'
+                              ? Theme.of(context).colorScheme.primary
+                              : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.05),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: _boardType == 'personal'
+                                ? Theme.of(context).colorScheme.primary
+                                : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.15),
+                          ),
+                        ),
+                        child: Column(
+                          children: [
+                            Icon(
+                              Icons.person_outline,
+                              size: 20,
+                              color: _boardType == 'personal'
+                                  ? Colors.white
+                                  : Theme.of(context).colorScheme.onSurface,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Personal',
+                              style: AppTypography.labelLarge.copyWith(
+                                color: _boardType == 'personal'
+                                    ? Colors.white
+                                    : Theme.of(context).colorScheme.onSurface,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => setDialogState(() => _boardType = 'shared'),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        decoration: BoxDecoration(
+                          color: _boardType == 'shared'
+                              ? Theme.of(context).colorScheme.primary
+                              : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.05),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: _boardType == 'shared'
+                                ? Theme.of(context).colorScheme.primary
+                                : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.15),
+                          ),
+                        ),
+                        child: Column(
+                          children: [
+                            Icon(
+                              Icons.group_outlined,
+                              size: 20,
+                              color: _boardType == 'shared'
+                                  ? Colors.white
+                                  : Theme.of(context).colorScheme.onSurface,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Shared',
+                              style: AppTypography.labelLarge.copyWith(
+                                color: _boardType == 'shared'
+                                    ? Colors.white
+                                    : Theme.of(context).colorScheme.onSurface,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              if (_boardType == 'shared') ...[
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Max Members',
+                      style: AppTypography.labelMedium.copyWith(
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
+                    ),
+                    Text(
+                      '$_maxMembers',
+                      style: AppTypography.labelLarge.copyWith(
+                        color: Theme.of(context).colorScheme.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+                Slider(
+                  value: _maxMembers.toDouble(),
+                  min: 2,
+                  max: 10,
+                  divisions: 8,
+                  label: '$_maxMembers',
+                  onChanged: (v) => setDialogState(() => _maxMembers = v.round()),
+                ),
+              ],
               const SizedBox(height: 24),
               GradientButton(
                 label: 'Create Board',
@@ -238,7 +414,76 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           title,
           gridSize: _selectedGridSize,
           category: _selectedCategory,
+          boardType: _boardType,
+          maxMembers: _boardType == 'shared' ? _maxMembers : 5,
         );
+  }
+
+  void _showJoinBoardDialog() {
+    final codeController = TextEditingController();
+    String? errorText;
+
+    showStyledBottomSheet(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => StyledBottomSheetContent(
+          title: 'Join a Board',
+          showClose: true,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              StyledTextField(
+                controller: codeController,
+                autofocus: true,
+                hintText: 'e.g., ABC123',
+                labelText: 'Invite Code',
+                prefixIcon: Icons.vpn_key_outlined,
+                onChanged: (_) {
+                  if (errorText != null) {
+                    setDialogState(() => errorText = null);
+                  }
+                },
+              ),
+              if (errorText != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 6, left: 4),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      errorText!,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ),
+              const SizedBox(height: 20),
+              GradientButton(
+                label: 'Join Board',
+                icon: Icons.group_add,
+                onPressed: () async {
+                  final code = codeController.text.trim();
+                  if (code.isEmpty) {
+                    setDialogState(() => errorText = 'Please enter an invite code');
+                    return;
+                  }
+                  try {
+                    final boardId = await ref.read(boardActionsProvider).joinBoard(code);
+                    if (context.mounted) {
+                      Navigator.pop(context);
+                      this.context.push('/board/$boardId');
+                    }
+                  } catch (e) {
+                    setDialogState(() => errorText = 'Invalid or expired invite code');
+                  }
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   void _showRenameDialog(String boardId, String currentTitle) {
@@ -356,7 +601,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         children: [
                           Text(
                             authState.user != null
-                                ? 'Welcome, ${authState.user!.name.isNotEmpty ? authState.user!.name : 'back'}'
+                                ? 'Welcome, ${authState.user!.displayLabel}'
                                 : 'Welcome back',
                             style: AppTypography.displaySmall.copyWith(
                               color: colorScheme.onSurface,
@@ -374,22 +619,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         ],
                       ),
                     ),
-                    GestureDetector(
+                    _NotificationBell(),
+                    const SizedBox(width: 4),
+                    UserAvatar(
+                      imageUrl: authState.user?.avatarUrl,
+                      initials: authState.user?.initials ?? '?',
+                      radius: 20,
                       onTap: () => context.push('/settings'),
-                      child: CircleAvatar(
-                        radius: 20,
-                        backgroundColor:
-                            colorScheme.primary.withValues(alpha: 0.1),
-                        child: Text(
-                          authState.user != null &&
-                                  authState.user!.name.isNotEmpty
-                              ? authState.user!.name[0].toUpperCase()
-                              : '?',
-                          style: AppTypography.labelLarge.copyWith(
-                            color: colorScheme.primary,
-                          ),
-                        ),
-                      ),
                     ),
                   ],
                 ),
@@ -415,10 +651,20 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         color: colorScheme.onSurface,
                       ),
                     ),
-                    OutlinedButton.icon(
-                      onPressed: _showCreateBoardDialog,
-                      icon: const Icon(Icons.add, size: 18),
-                      label: const Text('New Board'),
+                    Row(
+                      children: [
+                        OutlinedButton.icon(
+                          onPressed: _showJoinBoardDialog,
+                          icon: const Icon(Icons.group_add, size: 18),
+                          label: const Text('Join'),
+                        ),
+                        const SizedBox(width: 8),
+                        OutlinedButton.icon(
+                          onPressed: _showCreateBoardDialog,
+                          icon: const Icon(Icons.add, size: 18),
+                          label: const Text('New'),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -595,6 +841,22 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _NotificationBell extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final unread = ref.watch(unreadCountProvider);
+
+    return IconButton(
+      onPressed: () => context.push('/notifications'),
+      icon: Badge(
+        isLabelVisible: unread > 0,
+        label: Text('$unread'),
+        child: const Icon(Icons.notifications_outlined),
       ),
     );
   }

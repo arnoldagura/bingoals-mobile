@@ -51,6 +51,35 @@ class BoardCard extends StatelessWidget {
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
+                          if (board.isShared) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: colorScheme.tertiary
+                                    .withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.group,
+                                      size: 12,
+                                      color: colorScheme.tertiary),
+                                  const SizedBox(width: 3),
+                                  Text(
+                                    '${board.memberCount}',
+                                    style: AppTypography.caption.copyWith(
+                                      color: colorScheme.tertiary,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                           if (board.isDefault) ...[
                             const SizedBox(width: 8),
                             Icon(

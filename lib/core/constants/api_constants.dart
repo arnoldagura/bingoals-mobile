@@ -5,7 +5,9 @@ class ApiConstants {
   // Base URL - change this to your deployed API URL
   // For iOS simulator: use localhost
   // For Android emulator: use 10.0.2.2 instead of localhost
-  static const String baseUrl = 'https://bingoal-api.onrender.com';
+  // Remote: 'https://bingoal-api.onrender.com'
+  // Local:  'http://localhost:8080'
+  static const String baseUrl = 'http://bingoal-api.onrencer.com';
 
   static const String register = '/api/auth/register';
   static const String login = '/api/auth/login';
@@ -30,6 +32,30 @@ class ApiConstants {
 
   static String reflection(String boardId, int position) =>
       '/api/boards/$boardId/goals/$position/reflection';
+
+  // Board invites & members
+  static String boardInvites(String boardId) => '/api/boards/$boardId/invites';
+  static String joinInvite(String code) => '/api/invites/$code/join';
+  static String boardMembers(String boardId) => '/api/boards/$boardId/members';
+  static String removeMember(String boardId, String userId) =>
+      '/api/boards/$boardId/members/$userId';
+  static String leaveBoard(String boardId) => '/api/boards/$boardId/leave';
+
+  // Board activity
+  static String boardActivity(String boardId) =>
+      '/api/boards/$boardId/activity';
+
+  // Goal reactions
+  static String goalReactions(String goalId) => '/api/goals/$goalId/reactions';
+
+  // Notifications
+  static const String notifications = '/api/notifications';
+  static String markNotificationRead(String id) =>
+      '/api/notifications/$id/read';
+  static const String markAllNotificationsRead = '/api/notifications/read-all';
+
+  // User profiles
+  static String userProfile(String userId) => '/api/users/$userId';
 
   static const String upload = '/api/upload';
 

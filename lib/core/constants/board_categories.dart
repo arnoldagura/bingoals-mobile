@@ -74,3 +74,68 @@ class BoardCategory {
     }
   }
 }
+
+class BoardPreset {
+  final String label;
+  final String suggestedTitle;
+  final IconData icon;
+  final Color color;
+  final String boardType; // personal or shared
+  final int gridSize;
+  final String? category;
+  final int maxMembers;
+
+  const BoardPreset({
+    required this.label,
+    required this.suggestedTitle,
+    required this.icon,
+    required this.color,
+    this.boardType = 'shared',
+    this.gridSize = 5,
+    this.category,
+    this.maxMembers = 5,
+  });
+
+  static const List<BoardPreset> all = [
+    BoardPreset(
+      label: 'Couple Goals',
+      suggestedTitle: 'Couple Goals 2026',
+      icon: Icons.favorite_outline,
+      color: Color(0xFFEC4899),
+      boardType: 'shared',
+      gridSize: 5,
+      category: 'wellness',
+      maxMembers: 2,
+    ),
+    BoardPreset(
+      label: 'Friend Board',
+      suggestedTitle: 'Barkada Goals 2026',
+      icon: Icons.people_outline,
+      color: Color(0xFF8B5CF6),
+      boardType: 'shared',
+      gridSize: 5,
+      category: 'habits',
+      maxMembers: 6,
+    ),
+    BoardPreset(
+      label: 'Team Board',
+      suggestedTitle: 'Team Goals 2026',
+      icon: Icons.groups_outlined,
+      color: Color(0xFF3B82F6),
+      boardType: 'shared',
+      gridSize: 5,
+      category: 'career',
+      maxMembers: 10,
+    ),
+    BoardPreset(
+      label: 'Family Board',
+      suggestedTitle: 'Family Goals 2026',
+      icon: Icons.home_outlined,
+      color: Color(0xFF10B981),
+      boardType: 'shared',
+      gridSize: 3,
+      category: 'wellness',
+      maxMembers: 8,
+    ),
+  ];
+}

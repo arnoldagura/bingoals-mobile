@@ -8,14 +8,100 @@ import '../../../core/theme/typography.dart';
 import '../../../data/providers/auth_provider.dart';
 import '../../../router/app_router.dart';
 import '../../widgets/common/gradient_mesh_background.dart';
+import '../../widgets/common/styled_bottom_sheet.dart';
+import '../../widgets/common/styled_text_field.dart';
+import '../../widgets/common/user_avatar.dart';
 
-class SettingsScreen extends ConsumerWidget {
+class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends ConsumerState<SettingsScreen> {
+  void _showEditProfileSheet() {
+    final user = ref.read(authProvider).user;
+    if (user == null) return;
+
+    final nameController = TextEditingController(text: user.name);
+    final displayNameController = TextEditingController(text: user.displayName);
+    final bioController = TextEditingController(text: user.bio);
+
+    showStyledBottomSheet(
+      context: context,
+      builder: (context) => StyledBottomSheetContent(
+        title: 'Edit Profile',
+        showClose: true,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Avatar preview
+              Center(
+                child: UserAvatar(
+                  imageUrl: user.avatarUrl,
+                  initials: user.initials,
+                  radius: 36,
+                ),
+              ),
+              const SizedBox(height: 20),
+              StyledTextField(
+                controller: displayNameController,
+                labelText: 'Display Name',
+                hintText: 'How others see you',
+                prefixIcon: Icons.badge_outlined,
+              ),
+              const SizedBox(height: 12),
+              StyledTextField(
+                controller: nameController,
+                labelText: 'Full Name',
+                hintText: 'Your full name',
+                prefixIcon: Icons.person_outline,
+              ),
+              const SizedBox(height: 12),
+              StyledTextField(
+                controller: bioController,
+                labelText: 'Bio',
+                hintText: 'Tell us about yourself',
+                prefixIcon: Icons.edit_note,
+                maxLines: 3,
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: () async {
+                    final success =
+                        await ref.read(authProvider.notifier).updateProfile(
+                              name: nameController.text.trim(),
+                              displayName: displayNameController.text.trim(),
+                              bio: bioController.text.trim(),
+                            );
+                    if (context.mounted) {
+                      Navigator.pop(context);
+                      if (success) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Profile updated')),
+                        );
+                      }
+                    }
+                  },
+                  child: const Text('Save'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final currentPreset = ref.watch(themePresetProvider);
+    final user = ref.watch(authProvider).user;
 
     return GradientMeshScaffold(
       body: SafeArea(
@@ -31,9 +117,10 @@ class SettingsScreen extends ConsumerWidget {
                     onPressed: () => context.pop(),
                   ),
                   const SizedBox(width: 4),
-                  Text('Settings', style: AppTypography.headlineMedium.copyWith(
-                    color: colorScheme.onSurface,
-                  )),
+                  Text('Settings',
+                      style: AppTypography.headlineMedium.copyWith(
+                        color: colorScheme.onSurface,
+                      )),
                 ],
               ),
             ),
@@ -41,6 +128,67 @@ class SettingsScreen extends ConsumerWidget {
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
+                  // Profile section
+                  _SettingsSection(
+                    title: 'Profile',
+                    children: [
+                      InkWell(
+                        onTap: _showEditProfileSheet,
+                        borderRadius: BorderRadius.circular(16),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Row(
+                            children: [
+                              UserAvatar(
+                                imageUrl: user?.avatarUrl,
+                                initials: user?.initials ?? '?',
+                                radius: 28,
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      user?.displayLabel ?? 'Set up profile',
+                                      style: AppTypography.bodyLarge.copyWith(
+                                        color: colorScheme.onSurface,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    if (user?.bio.isNotEmpty == true)
+                                      Text(
+                                        user!.bio,
+                                        style: AppTypography.bodySmall.copyWith(
+                                          color: colorScheme.onSurface
+                                              .withValues(alpha: 0.5),
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      )
+                                    else
+                                      Text(
+                                        user?.email ?? '',
+                                        style: AppTypography.bodySmall.copyWith(
+                                          color: colorScheme.onSurface
+                                              .withValues(alpha: 0.5),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                              Icon(
+                                Icons.chevron_right,
+                                color:
+                                    colorScheme.onSurface.withValues(alpha: 0.3),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
                   // Theme Picker
                   _SettingsSection(
                     title: 'Theme',
@@ -50,10 +198,13 @@ class SettingsScreen extends ConsumerWidget {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                           children: ThemePreset.values.map((preset) {
-                            final colors = ThemePresetColors.forPreset(preset);
+                            final colors =
+                                ThemePresetColors.forPreset(preset);
                             final isSelected = preset == currentPreset;
                             return GestureDetector(
-                              onTap: () => ref.read(themePresetProvider.notifier).state = preset,
+                              onTap: () => ref
+                                  .read(themePresetProvider.notifier)
+                                  .state = preset,
                               child: Column(
                                 children: [
                                   Container(
@@ -65,7 +216,8 @@ class SettingsScreen extends ConsumerWidget {
                                       border: Border.all(
                                         color: isSelected
                                             ? colorScheme.primary
-                                            : colorScheme.outline.withValues(alpha: 0.3),
+                                            : colorScheme.outline
+                                                .withValues(alpha: 0.3),
                                         width: isSelected ? 3 : 1.5,
                                       ),
                                     ),
@@ -86,8 +238,11 @@ class SettingsScreen extends ConsumerWidget {
                                     style: AppTypography.caption.copyWith(
                                       color: isSelected
                                           ? colorScheme.primary
-                                          : colorScheme.onSurface.withValues(alpha: 0.6),
-                                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                                          : colorScheme.onSurface
+                                              .withValues(alpha: 0.6),
+                                      fontWeight: isSelected
+                                          ? FontWeight.w600
+                                          : FontWeight.normal,
                                     ),
                                   ),
                                 ],
@@ -104,9 +259,9 @@ class SettingsScreen extends ConsumerWidget {
                     title: 'Account',
                     children: [
                       _SettingsTile(
-                        icon: Icons.person_outline,
-                        title: 'Profile',
-                        subtitle: ref.watch(authProvider).user?.email ?? '',
+                        icon: Icons.email_outlined,
+                        title: 'Email',
+                        subtitle: user?.email ?? '',
                       ),
                       _SettingsTile(
                         icon: Icons.logout,
@@ -204,9 +359,8 @@ class _SettingsTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final textColor = isDestructive
-        ? colorScheme.error
-        : colorScheme.onSurface;
+    final textColor =
+        isDestructive ? colorScheme.error : colorScheme.onSurface;
 
     return InkWell(
       onTap: onTap,
@@ -244,7 +398,8 @@ class _SettingsTile extends StatelessWidget {
                   Text(
                     subtitle,
                     style: AppTypography.bodySmall.copyWith(
-                      color: colorScheme.onSurface.withValues(alpha: 0.5),
+                      color:
+                          colorScheme.onSurface.withValues(alpha: 0.5),
                     ),
                   ),
                 ],

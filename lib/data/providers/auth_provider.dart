@@ -129,6 +129,27 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
+  Future<bool> updateProfile({
+    String? name,
+    String? displayName,
+    String? avatarUrl,
+    String? bio,
+  }) async {
+    try {
+      final authApi = _ref.read(authApiProvider);
+      final user = await authApi.updateProfile(
+        name: name,
+        displayName: displayName,
+        avatarUrl: avatarUrl,
+        bio: bio,
+      );
+      state = AuthState(user: user);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<void> logout() async {
     final storage = _ref.read(secureStorageProvider);
     await storage.delete(key: ApiConstants.tokenKey);

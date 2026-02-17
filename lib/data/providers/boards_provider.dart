@@ -56,11 +56,15 @@ class BoardActions {
     String title, {
     int gridSize = 5,
     String? category,
+    String boardType = 'personal',
+    int maxMembers = 5,
   }) async {
     final board = await _api.createBoard(
       title: title,
       gridSize: gridSize,
       category: category,
+      boardType: boardType,
+      maxMembers: maxMembers,
     );
     _ref.invalidate(boardSummariesProvider);
     return board;
@@ -180,6 +184,34 @@ class BoardActions {
       reflectionAnswer: reflectionAnswer,
     );
     _ref.invalidate(boardDetailProvider(boardId));
+  }
+
+  // --- Shared board actions ---
+
+  Future<BoardInvite> createInvite(String boardId) async {
+    final invite = await _api.createInvite(boardId);
+    return invite;
+  }
+
+  Future<String> joinBoard(String inviteCode) async {
+    final boardId = await _api.joinBoard(inviteCode);
+    _ref.invalidate(boardSummariesProvider);
+    return boardId;
+  }
+
+  Future<void> leaveBoard(String boardId) async {
+    await _api.leaveBoard(boardId);
+    _ref.invalidate(boardSummariesProvider);
+  }
+
+  Future<void> removeMember(String boardId, String userId) async {
+    await _api.removeMember(boardId, userId);
+    _ref.invalidate(boardDetailProvider(boardId));
+  }
+
+  Future<Map<String, dynamic>> addReaction(String goalId, String type) async {
+    final result = await _api.addReaction(goalId, type);
+    return result;
   }
 }
 

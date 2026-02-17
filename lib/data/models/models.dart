@@ -3,3 +3,7 @@ export 'board.dart';
 export 'user.dart';
 export 'mini_goal.dart';
 export 'reflection.dart';
+export 'board_invite.dart';
+export 'activity.dart';
+export 'reaction.dart';
+export 'app_notification.dart';

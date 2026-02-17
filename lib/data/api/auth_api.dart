@@ -70,4 +70,27 @@ class AuthApi {
     final response = await _dio.get(ApiConstants.me);
     return User.fromJson(response.data);
   }
+
+  Future<User> updateProfile({
+    String? name,
+    String? displayName,
+    String? avatarUrl,
+    String? bio,
+  }) async {
+    final response = await _dio.put(
+      ApiConstants.me,
+      data: {
+        'name': ?name,
+        'displayName': ?displayName,
+        'avatarUrl': ?avatarUrl,
+        'bio': ?bio,
+      },
+    );
+    return User.fromJson(response.data);
+  }
+
+  Future<User> getUserProfile(String userId) async {
+    final response = await _dio.get(ApiConstants.userProfile(userId));
+    return User.fromJson(response.data);
+  }
 }

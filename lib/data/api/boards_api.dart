@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constants/api_constants.dart';
 import '../models/board.dart';
+import '../models/board_invite.dart';
+import '../models/activity.dart';
+import '../models/reaction.dart';
 import '../models/mini_goal.dart';
 import '../models/reflection.dart';
 import 'api_client.dart';
@@ -37,6 +40,8 @@ class BoardsApi {
     int? year,
     int gridSize = 5,
     String? category,
+    String boardType = 'personal',
+    int maxMembers = 5,
   }) async {
     final response = await _dio.post(
       ApiConstants.boards,
@@ -45,6 +50,8 @@ class BoardsApi {
         'year': ?year,
         'gridSize': gridSize,
         'category': ?category,
+        'boardType': boardType,
+        'maxMembers': maxMembers,
       },
     );
     return Board.fromJson(response.data);
@@ -195,5 +202,66 @@ class BoardsApi {
         'imageUrl': ?imageUrl,
       },
     );
+  }
+
+  // --- Shared board methods ---
+
+  /// Create an invite code for a board
+  Future<BoardInvite> createInvite(String boardId, {int maxUses = 0, int expiresIn = 0}) async {
+    final response = await _dio.post(
+      ApiConstants.boardInvites(boardId),
+      data: {'maxUses': maxUses, 'expiresIn': expiresIn},
+    );
+    return BoardInvite.fromJson(response.data);
+  }
+
+  /// Join a board via invite code
+  Future<String> joinBoard(String inviteCode) async {
+    final response = await _dio.post(ApiConstants.joinInvite(inviteCode));
+    return response.data['boardId'] as String;
+  }
+
+  /// Get members of a board
+  Future<List<MemberInfo>> getMembers(String boardId) async {
+    final response = await _dio.get(ApiConstants.boardMembers(boardId));
+    return (response.data as List)
+        .map((m) => MemberInfo.fromJson(m as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// Remove a member from a board (owner only)
+  Future<void> removeMember(String boardId, String userId) async {
+    await _dio.delete(ApiConstants.removeMember(boardId, userId));
+  }
+
+  /// Leave a board (non-owner)
+  Future<void> leaveBoard(String boardId) async {
+    await _dio.post(ApiConstants.leaveBoard(boardId));
+  }
+
+  /// Get paginated activity feed for a board
+  Future<ActivityPage> getActivity(String boardId, {int page = 1, int limit = 20}) async {
+    final response = await _dio.get(
+      ApiConstants.boardActivity(boardId),
+      queryParameters: {'page': page, 'limit': limit},
+    );
+    return ActivityPage.fromJson(response.data);
+  }
+
+  /// Add or toggle a reaction on a goal
+  Future<Map<String, dynamic>> addReaction(String goalId, String type) async {
+    final response = await _dio.post(
+      ApiConstants.goalReactions(goalId),
+      data: {'type': type},
+    );
+    return response.data as Map<String, dynamic>;
+  }
+
+  /// Get all reactions for a goal
+  Future<List<Reaction>> getReactions(String goalId) async {
+    final response = await _dio.get(ApiConstants.goalReactions(goalId));
+    return (response.data as List)
+        .map((r) => Reaction.fromJson(r as Map<String, dynamic>))
+        .toList();
   }
 }

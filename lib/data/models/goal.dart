@@ -36,6 +36,8 @@ class Goal {
   final DateTime? completedAt;
   final String? icon;
   final String? imageUrl;
+  final String? assignedTo;
+  final String? completedBy;
   final int position;
   final List<MiniGoal> miniGoals;
   final Reflection? reflection;
@@ -51,6 +53,8 @@ class Goal {
     this.completedAt,
     this.icon,
     this.imageUrl,
+    this.assignedTo,
+    this.completedBy,
     required this.position,
     this.miniGoals = const [],
     this.reflection,
@@ -71,6 +75,8 @@ class Goal {
     DateTime? completedAt,
     String? icon,
     String? imageUrl,
+    String? assignedTo,
+    String? completedBy,
     int? position,
     List<MiniGoal>? miniGoals,
     Reflection? reflection,
@@ -86,6 +92,8 @@ class Goal {
       completedAt: completedAt ?? this.completedAt,
       icon: icon ?? this.icon,
       imageUrl: imageUrl ?? this.imageUrl,
+      assignedTo: assignedTo ?? this.assignedTo,
+      completedBy: completedBy ?? this.completedBy,
       position: position ?? this.position,
       miniGoals: miniGoals ?? this.miniGoals,
       reflection: reflection ?? this.reflection,
@@ -111,6 +119,8 @@ class Goal {
       'completedAt': completedAt?.toIso8601String(),
       'icon': icon,
       'imageUrl': imageUrl,
+      'assignedTo': assignedTo,
+      'completedBy': completedBy,
       'position': position,
       'miniGoals': miniGoals.map((mg) => mg.toJson()).toList(),
       'reflection': reflection?.toJson(),
@@ -131,6 +141,8 @@ class Goal {
           : null,
       icon: json['icon'] as String?,
       imageUrl: json['imageUrl'] as String?,
+      assignedTo: json['assignedTo'] as String?,
+      completedBy: json['completedBy'] as String?,
       position: json['position'] as int,
       miniGoals: json['miniGoals'] != null
           ? (json['miniGoals'] as List)
