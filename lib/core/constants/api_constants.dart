@@ -7,7 +7,16 @@ class ApiConstants {
   // For Android emulator: use 10.0.2.2 instead of localhost
   // Remote: 'https://bingoal-api.onrender.com'
   // Local:  'http://localhost:8080'
-  static const String baseUrl = 'http://bingoal-api.onrencer.com';
+  static const String baseUrl = 'https://bingoal-api.onrender.com';
+
+  /// WebSocket base URL (derived from baseUrl)
+  static String get wsBaseUrl {
+    final uri = Uri.parse(baseUrl);
+    final scheme = uri.scheme == 'https' ? 'wss' : 'ws';
+    return '$scheme://${uri.host}${uri.hasPort ? ':${uri.port}' : ''}';
+  }
+
+  static String boardWebSocket(String boardId) => '/ws/boards/$boardId';
 
   static const String register = '/api/auth/register';
   static const String login = '/api/auth/login';

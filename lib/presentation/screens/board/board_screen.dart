@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:cached_network_image/cached_network_image.dart';
@@ -12,9 +13,11 @@ import 'package:image_picker/image_picker.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/typography.dart';
+import '../../../data/api/websocket_service.dart';
 import '../../../data/models/models.dart';
 import '../../../data/providers/auth_provider.dart';
 import '../../../data/providers/boards_provider.dart';
+import '../../../data/providers/notifications_provider.dart';
 import '../../../data/providers/shared_board_providers.dart';
 import '../../widgets/common/gradient_button.dart';
 import '../../widgets/common/gradient_mesh_background.dart';
@@ -38,6 +41,8 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
   BoardViewMode _viewMode = BoardViewMode.grid;
   final _goalTitleController = TextEditingController();
   late final ConfettiController _confettiController;
+  StreamSubscription<BoardEvent>? _wsSubscription;
+  bool _wsConnected = false;
 
   @override
   void initState() {
@@ -48,9 +53,66 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
 
   @override
   void dispose() {
+    _wsSubscription?.cancel();
     _goalTitleController.dispose();
     _confettiController.dispose();
     super.dispose();
+  }
+
+  void _listenToWebSocket(BoardWebSocket ws) {
+    if (_wsConnected) return;
+    _wsConnected = true;
+
+    _wsSubscription = ws.events.listen((event) {
+      if (!mounted) return;
+
+      // Refresh notification badge for events that create notifications
+      ref.invalidate(notificationsProvider);
+
+      switch (event.type) {
+        case 'goal_updated':
+        case 'goal_completed':
+          ref.invalidate(boardDetailProvider(widget.boardId));
+          ref.invalidate(boardSummariesProvider);
+          ref.invalidate(boardActivityProvider(widget.boardId));
+          if (event.type == 'goal_completed' && event.data is Map) {
+            final data = event.data as Map;
+            final name = data['userName'] ?? 'Someone';
+            final title = data['goalTitle'] ?? 'a goal';
+            _showEventSnackBar('$name completed "$title"');
+          }
+          break;
+        case 'member_joined':
+          ref.invalidate(boardDetailProvider(widget.boardId));
+          ref.invalidate(boardMembersProvider(widget.boardId));
+          ref.invalidate(boardActivityProvider(widget.boardId));
+          if (event.data is Map) {
+            final name = (event.data as Map)['userName'] ?? 'Someone';
+            _showEventSnackBar('$name joined the board');
+          }
+          break;
+        case 'member_left':
+          ref.invalidate(boardDetailProvider(widget.boardId));
+          ref.invalidate(boardMembersProvider(widget.boardId));
+          ref.invalidate(boardActivityProvider(widget.boardId));
+          break;
+        case 'board_updated':
+          ref.invalidate(boardDetailProvider(widget.boardId));
+          ref.invalidate(boardSummariesProvider);
+          break;
+      }
+    });
+  }
+
+  void _showEventSnackBar(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 3),
+      ),
+    );
   }
 
   void _showError(Object error) {
@@ -1100,7 +1162,13 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
           ),
         ),
       ),
-      data: (board) => GradientMeshScaffold(
+      data: (board) {
+        // Watch the WebSocket provider to keep it alive for shared boards
+        if (board.isShared) {
+          final ws = ref.watch(boardWebSocketProvider(widget.boardId));
+          _listenToWebSocket(ws);
+        }
+        return GradientMeshScaffold(
         body: Stack(
           children: [
             SafeArea(
@@ -1130,7 +1198,8 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
             ),
           ],
         ),
-      ),
+      );
+      },
     );
   }
 

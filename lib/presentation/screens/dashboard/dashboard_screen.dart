@@ -24,7 +24,8 @@ class DashboardScreen extends ConsumerStatefulWidget {
   ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+class _DashboardScreenState extends ConsumerState<DashboardScreen>
+    with WidgetsBindingObserver {
   final _newBoardController = TextEditingController();
   int _selectedGridSize = 5;
   String? _selectedCategory;
@@ -34,9 +35,24 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   int _maxMembers = 5;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _newBoardController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Refresh notification count when app comes back to foreground
+    if (state == AppLifecycleState.resumed) {
+      ref.invalidate(notificationsProvider);
+    }
   }
 
   void _showCreateBoardDialog() {
@@ -410,13 +426,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     if (title.isEmpty) return;
 
     Navigator.pop(context);
-    await ref.read(boardActionsProvider).createBoard(
+    final board = await ref.read(boardActionsProvider).createBoard(
           title,
           gridSize: _selectedGridSize,
           category: _selectedCategory,
           boardType: _boardType,
           maxMembers: _boardType == 'shared' ? _maxMembers : 5,
         );
+    if (mounted) context.go('/board/${board.id}');
   }
 
   void _showJoinBoardDialog() {
