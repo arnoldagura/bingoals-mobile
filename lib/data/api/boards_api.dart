@@ -6,6 +6,7 @@ import '../models/board.dart';
 import '../models/board_invite.dart';
 import '../models/activity.dart';
 import '../models/reaction.dart';
+import '../models/comment.dart';
 import '../models/mini_goal.dart';
 import '../models/reflection.dart';
 import 'api_client.dart';
@@ -263,5 +264,27 @@ class BoardsApi {
     return (response.data as List)
         .map((r) => Reaction.fromJson(r as Map<String, dynamic>))
         .toList();
+  }
+
+  /// Add a comment to a goal
+  Future<Comment> addComment(String goalId, String text) async {
+    final response = await _dio.post(
+      ApiConstants.goalComments(goalId),
+      data: {'text': text},
+    );
+    return Comment.fromJson(response.data);
+  }
+
+  /// Get all comments for a goal
+  Future<List<Comment>> getComments(String goalId) async {
+    final response = await _dio.get(ApiConstants.goalComments(goalId));
+    return (response.data as List)
+        .map((c) => Comment.fromJson(c as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// Delete a comment
+  Future<void> deleteComment(String goalId, String commentId) async {
+    await _dio.delete(ApiConstants.deleteComment(goalId, commentId));
   }
 }

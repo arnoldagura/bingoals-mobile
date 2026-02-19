@@ -22,3 +22,10 @@ final goalReactionsProvider =
   final api = ref.watch(boardsApiProvider);
   return api.getReactions(goalId);
 });
+
+/// Comments for a specific goal
+final goalCommentsProvider =
+    FutureProvider.family<List<Comment>, String>((ref, goalId) async {
+  final api = ref.watch(boardsApiProvider);
+  return api.getComments(goalId);
+});

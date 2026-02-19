@@ -35,15 +35,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   Future<void> _register() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final success = await ref.read(authProvider.notifier).register(
+    await ref.read(authProvider.notifier).register(
           name: _nameController.text.trim(),
           email: _emailController.text.trim(),
           password: _passwordController.text,
         );
-
-    if (success && mounted) {
-      context.go(AppRoutes.dashboard);
-    }
+    // Router redirect handles navigation after auth state changes
   }
 
   @override

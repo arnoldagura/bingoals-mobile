@@ -100,6 +100,16 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
           ref.invalidate(boardDetailProvider(widget.boardId));
           ref.invalidate(boardSummariesProvider);
           break;
+        case 'comment_added':
+        case 'comment_deleted':
+          if (event.data is Map) {
+            final goalId = (event.data as Map)['goalId'] as String?;
+            if (goalId != null) {
+              ref.invalidate(goalCommentsProvider(goalId));
+            }
+          }
+          ref.invalidate(boardActivityProvider(widget.boardId));
+          break;
       }
     });
   }
@@ -582,6 +592,8 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
                     goalId: goal.id,
                     boardActionsProvider: boardActionsProvider,
                   ),
+                  const SizedBox(height: 16),
+                  _CommentsSection(goalId: goal.id),
                   const SizedBox(height: 12),
                 ],
                 Row(
@@ -1814,6 +1826,243 @@ class _ReactionRowState extends ConsumerState<_ReactionRow> {
           ),
         );
       }).toList(),
+    );
+  }
+}
+
+class _CommentsSection extends ConsumerStatefulWidget {
+  final String goalId;
+
+  const _CommentsSection({required this.goalId});
+
+  @override
+  ConsumerState<_CommentsSection> createState() => _CommentsSectionState();
+}
+
+class _CommentsSectionState extends ConsumerState<_CommentsSection> {
+  final _controller = TextEditingController();
+  bool _isSubmitting = false;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final text = _controller.text.trim();
+    if (text.isEmpty || _isSubmitting) return;
+
+    setState(() => _isSubmitting = true);
+    try {
+      await ref.read(boardActionsProvider).addComment(widget.goalId, text);
+      _controller.clear();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to add comment')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
+  String _formatTime(DateTime dt) {
+    final diff = DateTime.now().difference(dt);
+    if (diff.inMinutes < 1) return 'just now';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+    if (diff.inHours < 24) return '${diff.inHours}h ago';
+    if (diff.inDays < 7) return '${diff.inDays}d ago';
+    return '${dt.month}/${dt.day}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final commentsAsync = ref.watch(goalCommentsProvider(widget.goalId));
+    final colorScheme = Theme.of(context).colorScheme;
+    final currentUserId = ref.watch(authProvider).user?.id;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.chat_bubble_outline,
+                size: 16, color: colorScheme.primary),
+            const SizedBox(width: 6),
+            Text(
+              'Comments',
+              style: AppTypography.bodyMedium.copyWith(
+                fontWeight: FontWeight.w600,
+                color: colorScheme.primary,
+              ),
+            ),
+            const SizedBox(width: 8),
+            commentsAsync.when(
+              data: (comments) => comments.isEmpty
+                  ? const SizedBox.shrink()
+                  : Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: colorScheme.primaryContainer,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        '${comments.length}',
+                        style: AppTypography.bodySmall.copyWith(
+                          color: colorScheme.onPrimaryContainer,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+              loading: () => const SizedBox.shrink(),
+              error: (_, __) => const SizedBox.shrink(),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        // Input row
+        Row(
+          children: [
+            Expanded(
+              child: StyledTextField(
+                controller: _controller,
+                maxLines: 1,
+                hintText: 'Add a comment...',
+                prefixIcon: Icons.comment_outlined,
+              ),
+            ),
+            const SizedBox(width: 8),
+            IconButton(
+              onPressed: _isSubmitting ? null : _submit,
+              icon: _isSubmitting
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Icon(Icons.send, color: colorScheme.primary),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        // Comments list
+        commentsAsync.when(
+          data: (comments) {
+            if (comments.isEmpty) {
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Text(
+                  'No comments yet. Be the first!',
+                  style: AppTypography.bodySmall.copyWith(
+                    color: colorScheme.onSurface.withValues(alpha: 0.5),
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              );
+            }
+            return Column(
+              children: comments.map((comment) {
+                final isOwn = comment.userId == currentUserId;
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      UserAvatar(
+                        initials: comment.user?.initials ?? '?',
+                        imageUrl: comment.user?.avatarUrl,
+                        radius: 14,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: colorScheme.surfaceContainerHighest,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Text(
+                                    comment.user?.displayLabel ?? 'Unknown',
+                                    style: AppTypography.bodySmall.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    _formatTime(comment.createdAt),
+                                    style: AppTypography.bodySmall.copyWith(
+                                      color: colorScheme.onSurface
+                                          .withValues(alpha: 0.5),
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                comment.text,
+                                style: AppTypography.bodySmall,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      if (isOwn)
+                        IconButton(
+                          icon: Icon(Icons.delete_outline,
+                              size: 16,
+                              color: colorScheme.onSurface
+                                  .withValues(alpha: 0.4)),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          onPressed: () async {
+                            try {
+                              await ref
+                                  .read(boardActionsProvider)
+                                  .deleteComment(
+                                      widget.goalId, comment.id);
+                            } catch (_) {
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                      content:
+                                          Text('Failed to delete comment')),
+                                );
+                              }
+                            }
+                          },
+                        ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            );
+          },
+          loading: () => const Center(
+            child: Padding(
+              padding: EdgeInsets.all(16),
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            ),
+          ),
+          error: (_, __) => Text(
+            'Failed to load comments',
+            style: AppTypography.bodySmall
+                .copyWith(color: colorScheme.error),
+          ),
+        ),
+      ],
     );
   }
 }

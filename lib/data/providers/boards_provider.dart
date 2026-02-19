@@ -2,8 +2,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../api/boards_api.dart';
 import '../models/models.dart';
 import 'auth_provider.dart';
+import 'shared_board_providers.dart';
 
 final boardSummariesProvider = FutureProvider<List<BoardSummary>>((ref) async {
+  final authState = ref.watch(authProvider);
+  if (!authState.isLoggedIn) return [];
+
   final api = ref.watch(boardsApiProvider);
   return api.getBoards();
 });
@@ -212,6 +216,17 @@ class BoardActions {
   Future<Map<String, dynamic>> addReaction(String goalId, String type) async {
     final result = await _api.addReaction(goalId, type);
     return result;
+  }
+
+  Future<Comment> addComment(String goalId, String text) async {
+    final comment = await _api.addComment(goalId, text);
+    _ref.invalidate(goalCommentsProvider(goalId));
+    return comment;
+  }
+
+  Future<void> deleteComment(String goalId, String commentId) async {
+    await _api.deleteComment(goalId, commentId);
+    _ref.invalidate(goalCommentsProvider(goalId));
   }
 }
 

@@ -29,4 +29,8 @@ class NotificationsApi {
   Future<void> markAllRead() async {
     await _dio.post(ApiConstants.markAllNotificationsRead);
   }
+
+  Future<void> registerDeviceToken(String token) async {
+    await _dio.post(ApiConstants.deviceToken, data: {'token': token});
+  }
 }

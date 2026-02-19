@@ -5,7 +5,9 @@ import 'package:google_sign_in/google_sign_in.dart';
 import '../../core/constants/api_constants.dart';
 import '../api/api_client.dart';
 import '../api/auth_api.dart';
+import '../api/notifications_api.dart';
 import '../models/user.dart';
+import '../services/push_service.dart';
 import 'boards_provider.dart';
 import '../../presentation/screens/onboarding/onboarding_screen.dart';
 
@@ -42,6 +44,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       final authApi = _ref.read(authApiProvider);
       final user = await authApi.getMe();
       state = AuthState(user: user);
+      _registerDeviceToken();
     } on DioException catch (e) {
       if (e.response?.statusCode == 401) {
         await storage.delete(key: ApiConstants.tokenKey);
@@ -151,6 +154,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> logout() async {
+    PushService.instance.setTokenRefreshCallback(null);
     final storage = _ref.read(secureStorageProvider);
     await storage.delete(key: ApiConstants.tokenKey);
     _ref.invalidate(boardSummariesProvider);
@@ -162,6 +166,23 @@ class AuthNotifier extends StateNotifier<AuthState> {
     final storage = _ref.read(secureStorageProvider);
     await storage.write(key: ApiConstants.tokenKey, value: token);
     state = AuthState(user: user);
+    _registerDeviceToken();
+  }
+
+  /// Sends FCM token to backend so push notifications reach this device.
+  Future<void> _registerDeviceToken() async {
+    try {
+      final fcmToken = PushService.instance.fcmToken;
+      if (fcmToken == null) return;
+      final api = _ref.read(notificationsApiProvider);
+      await api.registerDeviceToken(fcmToken);
+      // Re-register if token refreshes while logged in
+      PushService.instance.setTokenRefreshCallback((newToken) {
+        _ref.read(notificationsApiProvider).registerDeviceToken(newToken);
+      });
+    } catch (_) {
+      // Push registration is best-effort — don't block auth
+    }
   }
 
   String _extractError(DioException e) {

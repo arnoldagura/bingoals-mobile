@@ -6,4 +6,5 @@ export 'reflection.dart';
 export 'board_invite.dart';
 export 'activity.dart';
 export 'reaction.dart';
+export 'comment.dart';
 export 'app_notification.dart';

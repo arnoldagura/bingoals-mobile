@@ -57,6 +57,11 @@ class ApiConstants {
   // Goal reactions
   static String goalReactions(String goalId) => '/api/goals/$goalId/reactions';
 
+  // Goal comments
+  static String goalComments(String goalId) => '/api/goals/$goalId/comments';
+  static String deleteComment(String goalId, String commentId) =>
+      '/api/goals/$goalId/comments/$commentId';
+
   // Notifications
   static const String notifications = '/api/notifications';
   static String markNotificationRead(String id) =>
@@ -65,6 +70,9 @@ class ApiConstants {
 
   // User profiles
   static String userProfile(String userId) => '/api/users/$userId';
+
+  // Device token for push notifications
+  static const String deviceToken = '/api/device-token';
 
   static const String upload = '/api/upload';
 

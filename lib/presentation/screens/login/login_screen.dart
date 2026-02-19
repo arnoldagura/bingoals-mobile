@@ -33,22 +33,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final success = await ref.read(authProvider.notifier).login(
+    await ref.read(authProvider.notifier).login(
           email: _emailController.text.trim(),
           password: _passwordController.text,
         );
-
-    if (success && mounted) {
-      context.go(AppRoutes.dashboard);
-    }
+    // Router redirect handles navigation after auth state changes
   }
 
   Future<void> _loginWithGoogle() async {
-    final success = await ref.read(authProvider.notifier).loginWithGoogle();
-
-    if (success && mounted) {
-      context.go(AppRoutes.dashboard);
-    }
+    await ref.read(authProvider.notifier).loginWithGoogle();
+    // Router redirect handles navigation after auth state changes
   }
 
   @override
