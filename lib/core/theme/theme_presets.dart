@@ -42,13 +42,13 @@ class ThemePresetColors {
     switch (preset) {
       case ThemePreset.light:
         return const ThemePresetColors(
-          primary: Color(0xFF171717),
-          accent: Color(0xFF525252),
-          background: Color(0xFFFAFAFA),
-          foreground: Color(0xFF171717),
-          card: Color(0xFFFFFFFF),
-          border: Color(0xFFE5E5E5),
-          muted: Color(0xFF737373),
+          primary: Color(0xFF1C1917),   // warm near-black
+          accent: Color(0xFF786B5E),    // warm brown
+          background: Color(0xFFFAF8F3), // warm parchment
+          foreground: Color(0xFF1C1917),
+          card: Color(0xFFF0EBE1),      // warm cream card
+          border: Color(0xFFE2D9CE),    // warm border
+          muted: Color(0xFF9C8A7A),     // warm gray-brown
           brightness: Brightness.light,
         );
 

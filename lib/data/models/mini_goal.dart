@@ -4,6 +4,7 @@ class MiniGoal {
   final String title;
   final int percentage;
   final bool isComplete;
+  final String? imageUrl;
 
   const MiniGoal({
     required this.id,
@@ -11,6 +12,7 @@ class MiniGoal {
     required this.title,
     required this.percentage,
     this.isComplete = false,
+    this.imageUrl,
   });
 
   MiniGoal copyWith({
@@ -19,6 +21,7 @@ class MiniGoal {
     String? title,
     int? percentage,
     bool? isComplete,
+    String? imageUrl,
   }) {
     return MiniGoal(
       id: id ?? this.id,
@@ -26,6 +29,7 @@ class MiniGoal {
       title: title ?? this.title,
       percentage: percentage ?? this.percentage,
       isComplete: isComplete ?? this.isComplete,
+      imageUrl: imageUrl ?? this.imageUrl,
     );
   }
 
@@ -36,6 +40,7 @@ class MiniGoal {
       'title': title,
       'percentage': percentage,
       'isComplete': isComplete,
+      'imageUrl': imageUrl,
     };
   }
 
@@ -46,6 +51,7 @@ class MiniGoal {
       title: json['title'] as String,
       percentage: json['percentage'] as int,
       isComplete: json['isComplete'] as bool? ?? false,
+      imageUrl: json['imageUrl'] as String?,
     );
   }
 }

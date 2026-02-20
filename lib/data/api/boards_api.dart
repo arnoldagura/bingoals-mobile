@@ -129,12 +129,14 @@ class BoardsApi {
     String miniGoalId, {
     String? title,
     int? percentage,
+    String? imageUrl,
   }) async {
     final response = await _dio.put(
       ApiConstants.miniGoal(boardId, position, miniGoalId),
       data: {
         'title': ?title,
         'percentage': ?percentage,
+        'imageUrl': ?imageUrl,
       },
     );
     return MiniGoal.fromJson(response.data);
@@ -203,6 +205,38 @@ class BoardsApi {
         'imageUrl': ?imageUrl,
       },
     );
+  }
+
+  /// Update a goal's mood color
+  Future<void> updateGoalMood(
+    String boardId,
+    int position,
+    String? mood,
+  ) async {
+    await _dio.put(
+      ApiConstants.updateGoal(boardId, position),
+      data: {'mood': mood},
+    );
+  }
+
+  /// Update a milestone's imageUrl
+  Future<MiniGoal> updateMilestoneImage(
+    String boardId,
+    int position,
+    String miniGoalId,
+    String imageUrl,
+  ) async {
+    final response = await _dio.put(
+      ApiConstants.miniGoal(boardId, position, miniGoalId),
+      data: {'imageUrl': imageUrl},
+    );
+    return MiniGoal.fromJson(response.data);
+  }
+
+  /// Fetch all milestone memories across all user boards
+  Future<List<Map<String, dynamic>>> getGallery() async {
+    final response = await _dio.get(ApiConstants.gallery);
+    return (response.data as List).cast<Map<String, dynamic>>();
   }
 
   // --- Shared board methods ---

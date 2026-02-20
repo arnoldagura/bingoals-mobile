@@ -89,7 +89,7 @@ class _GradientButtonState extends State<GradientButton>
                 end: Alignment.bottomCenter,
                 colors: [primary, darker],
               ),
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(50),
               boxShadow: _isEnabled
                   ? [
                       BoxShadow(

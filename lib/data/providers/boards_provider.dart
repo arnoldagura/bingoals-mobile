@@ -18,6 +18,14 @@ final boardDetailProvider =
   return api.getBoard(boardId);
 });
 
+final galleryProvider = FutureProvider<List<GalleryItem>>((ref) async {
+  final authState = ref.watch(authProvider);
+  if (!authState.isLoggedIn) return [];
+  final api = ref.watch(boardsApiProvider);
+  final raw = await api.getGallery();
+  return raw.map(GalleryItem.fromJson).toList();
+});
+
 final dashboardStatsProvider = Provider<DashboardStats>((ref) {
   final summariesAsync = ref.watch(boardSummariesProvider);
   final authState = ref.watch(authProvider);
@@ -187,6 +195,27 @@ class BoardActions {
       notes: notes,
       reflectionAnswer: reflectionAnswer,
     );
+    _ref.invalidate(boardDetailProvider(boardId));
+  }
+
+  Future<String> uploadImage(String filePath) => _api.uploadImage(filePath);
+
+  Future<void> updateGoalMood(
+    String boardId,
+    int position,
+    String? mood,
+  ) async {
+    await _api.updateGoalMood(boardId, position, mood);
+    _ref.invalidate(boardDetailProvider(boardId));
+  }
+
+  Future<void> updateMilestoneImage(
+    String boardId,
+    int position,
+    String miniGoalId,
+    String imageUrl,
+  ) async {
+    await _api.updateMilestoneImage(boardId, position, miniGoalId, imageUrl);
     _ref.invalidate(boardDetailProvider(boardId));
   }
 

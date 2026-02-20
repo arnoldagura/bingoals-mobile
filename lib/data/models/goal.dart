@@ -36,11 +36,13 @@ class Goal {
   final DateTime? completedAt;
   final String? icon;
   final String? imageUrl;
+  final String? mood;
   final String? assignedTo;
   final String? completedBy;
   final int position;
   final List<MiniGoal> miniGoals;
   final Reflection? reflection;
+  final int completedByCount; // How many members completed this (shared boards only)
 
   const Goal({
     required this.id,
@@ -53,11 +55,13 @@ class Goal {
     this.completedAt,
     this.icon,
     this.imageUrl,
+    this.mood,
     this.assignedTo,
     this.completedBy,
     required this.position,
     this.miniGoals = const [],
     this.reflection,
+    this.completedByCount = 0,
   });
 
   bool get isEmpty => title == null || title!.isEmpty;
@@ -75,11 +79,13 @@ class Goal {
     DateTime? completedAt,
     String? icon,
     String? imageUrl,
+    String? mood,
     String? assignedTo,
     String? completedBy,
     int? position,
     List<MiniGoal>? miniGoals,
     Reflection? reflection,
+    int? completedByCount,
   }) {
     return Goal(
       id: id ?? this.id,
@@ -92,11 +98,13 @@ class Goal {
       completedAt: completedAt ?? this.completedAt,
       icon: icon ?? this.icon,
       imageUrl: imageUrl ?? this.imageUrl,
+      mood: mood ?? this.mood,
       assignedTo: assignedTo ?? this.assignedTo,
       completedBy: completedBy ?? this.completedBy,
       position: position ?? this.position,
       miniGoals: miniGoals ?? this.miniGoals,
       reflection: reflection ?? this.reflection,
+      completedByCount: completedByCount ?? this.completedByCount,
     );
   }
 
@@ -119,6 +127,7 @@ class Goal {
       'completedAt': completedAt?.toIso8601String(),
       'icon': icon,
       'imageUrl': imageUrl,
+      'mood': mood,
       'assignedTo': assignedTo,
       'completedBy': completedBy,
       'position': position,
@@ -141,6 +150,7 @@ class Goal {
           : null,
       icon: json['icon'] as String?,
       imageUrl: json['imageUrl'] as String?,
+      mood: json['mood'] as String?,
       assignedTo: json['assignedTo'] as String?,
       completedBy: json['completedBy'] as String?,
       position: json['position'] as int,
@@ -152,6 +162,7 @@ class Goal {
       reflection: json['reflection'] != null
           ? Reflection.fromJson(json['reflection'] as Map<String, dynamic>)
           : null,
+      completedByCount: json['completedByCount'] as int? ?? 0,
     );
   }
 }

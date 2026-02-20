@@ -8,23 +8,24 @@ class AppTypography {
 
   // Heading styles (Playfair Display)
   static TextStyle get displayLarge => GoogleFonts.playfairDisplay(
-        fontSize: 40,
+        fontSize: 48,
         fontWeight: FontWeight.w700,
+        color: AppColors.textPrimary,
+        letterSpacing: -1.0,
+      );
+
+  static TextStyle get displayMedium => GoogleFonts.playfairDisplay(
+        fontSize: 36,
+        fontWeight: FontWeight.w600,
         color: AppColors.textPrimary,
         letterSpacing: -0.5,
       );
 
-  static TextStyle get displayMedium => GoogleFonts.playfairDisplay(
+  static TextStyle get displaySmall => GoogleFonts.playfairDisplay(
         fontSize: 32,
         fontWeight: FontWeight.w600,
         color: AppColors.textPrimary,
         letterSpacing: -0.25,
-      );
-
-  static TextStyle get displaySmall => GoogleFonts.playfairDisplay(
-        fontSize: 28,
-        fontWeight: FontWeight.w600,
-        color: AppColors.textPrimary,
       );
 
   static TextStyle get headlineLarge => GoogleFonts.playfairDisplay(

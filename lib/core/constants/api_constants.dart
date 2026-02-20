@@ -75,6 +75,7 @@ class ApiConstants {
   static const String deviceToken = '/api/device-token';
 
   static const String upload = '/api/upload';
+  static const String gallery = '/api/gallery';
 
   static const Duration connectTimeout = Duration(seconds: 30);
   static const Duration receiveTimeout = Duration(seconds: 30);

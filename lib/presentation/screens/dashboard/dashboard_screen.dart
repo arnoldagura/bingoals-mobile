@@ -597,13 +597,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     final colorScheme = theme.colorScheme;
 
     return GradientMeshScaffold(
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: colorScheme.primary,
-        onPressed: _showCreateBoardDialog,
-        icon: const Icon(Icons.add),
-        foregroundColor: colorScheme.onPrimary,
-        label: const Text('New Board'),
-      ),
       body: SafeArea(
         child: CustomScrollView(
           slivers: [
@@ -611,38 +604,34 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
                 child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            authState.user != null
-                                ? 'Welcome, ${authState.user!.displayLabel}'
-                                : 'Welcome back',
+                            'My Boards',
                             style: AppTypography.displaySmall.copyWith(
                               color: colorScheme.onSurface,
-                              fontWeight: FontWeight.bold,
                             ),
                           ),
-                          const SizedBox(height: 4),
                           Text(
-                            "Here's how your goals are progressing in ${Helpers.currentYear}",
-                            style: AppTypography.bodyMedium.copyWith(
-                              color:
-                                  colorScheme.onSurface.withValues(alpha: 0.6),
+                            authState.user != null
+                                ? 'Hey ${authState.user!.displayLabel} · ${Helpers.currentYear}'
+                                : '${Helpers.currentYear}',
+                            style: AppTypography.bodySmall.copyWith(
+                              color: colorScheme.onSurface.withValues(alpha: 0.5),
                             ),
                           ),
                         ],
                       ),
                     ),
-                    _NotificationBell(),
-                    const SizedBox(width: 4),
                     UserAvatar(
                       imageUrl: authState.user?.avatarUrl,
                       initials: authState.user?.initials ?? '?',
                       radius: 20,
-                      onTap: () => context.push('/settings'),
+                      onTap: () => context.go('/settings'),
                     ),
                   ],
                 ),
@@ -780,7 +769,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                   );
                 }
                 return SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
                   sliver: SliverList(
                     delegate: SliverChildBuilderDelegate(
                       (context, index) {
@@ -863,18 +852,3 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
   }
 }
 
-class _NotificationBell extends ConsumerWidget {
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final unread = ref.watch(unreadCountProvider);
-
-    return IconButton(
-      onPressed: () => context.push('/notifications'),
-      icon: Badge(
-        isLabelVisible: unread > 0,
-        label: Text('$unread'),
-        child: const Icon(Icons.notifications_outlined),
-      ),
-    );
-  }
-}

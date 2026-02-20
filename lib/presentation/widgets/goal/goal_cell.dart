@@ -4,7 +4,7 @@ import '../../../core/constants/api_constants.dart';
 import '../../../core/theme/typography.dart';
 import '../../../data/models/goal.dart';
 
-class GoalCell extends StatelessWidget {
+class GoalCell extends StatefulWidget {
   final int index;
   final String? goalTitle;
   final GoalStatus status;
@@ -26,38 +26,98 @@ class GoalCell extends StatelessWidget {
     this.onLongPress,
   });
 
-  bool get isEmpty => goalTitle == null || goalTitle!.isEmpty;
+  @override
+  State<GoalCell> createState() => _GoalCellState();
+}
+
+class _GoalCellState extends State<GoalCell>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _scaleController;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _scaleController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 100),
+      reverseDuration: const Duration(milliseconds: 200),
+    );
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.93).animate(
+      CurvedAnimation(
+        parent: _scaleController,
+        curve: Curves.easeInOut,
+        reverseCurve: Curves.elasticOut,
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _scaleController.dispose();
+    super.dispose();
+  }
+
+  bool get isEmpty =>
+      widget.goalTitle == null || widget.goalTitle!.isEmpty;
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
     return GestureDetector(
-      onTap: onTap,
-      onLongPress: onLongPress,
-      child: Container(
-        decoration: BoxDecoration(
-          color: _backgroundColor(colorScheme),
-          border: Border.all(
-            color: colorScheme.outline.withValues(alpha: 0.15),
-            width: 1,
-          ),
-          borderRadius: BorderRadius.circular(10),
+      onTapDown: (_) => _scaleController.forward(),
+      onTapUp: (_) {
+        _scaleController.reverse();
+        widget.onTap?.call();
+      },
+      onTapCancel: () => _scaleController.reverse(),
+      onLongPress: () {
+        _scaleController.reverse();
+        widget.onLongPress?.call();
+      },
+      child: AnimatedBuilder(
+        animation: _scaleAnimation,
+        builder: (context, child) => Transform.scale(
+          scale: _scaleAnimation.value,
+          child: child,
         ),
-        child: isEmpty
-            ? _buildEmptyCell(colorScheme)
-            : _buildFilledCell(colorScheme),
+        child: Container(
+          decoration: BoxDecoration(
+            color: _backgroundColor(colorScheme),
+            border: Border.all(
+              color: colorScheme.outline.withValues(alpha: 0.15),
+              width: 1,
+            ),
+            borderRadius: BorderRadius.circular(10),
+            boxShadow: widget.status == GoalStatus.completed && !isEmpty
+                ? [
+                    BoxShadow(
+                      color: colorScheme.primary.withValues(alpha: 0.25),
+                      blurRadius: 12,
+                      spreadRadius: 1,
+                    ),
+                  ]
+                : null,
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: isEmpty
+              ? _buildEmptyCell(colorScheme)
+              : _buildFilledCell(colorScheme),
+        ),
       ),
     );
   }
 
   Color _backgroundColor(ColorScheme cs) {
     if (isEmpty) return cs.surfaceContainerHighest;
-    switch (status) {
+    switch (widget.status) {
       case GoalStatus.inProgress:
         return cs.tertiaryContainer;
       case GoalStatus.completed:
-        if (imageUrl != null && imageUrl!.isNotEmpty) return Colors.transparent;
+        if (widget.imageUrl != null && widget.imageUrl!.isNotEmpty) {
+          return Colors.transparent;
+        }
         return cs.primaryContainer;
       case GoalStatus.notStarted:
         return cs.surfaceContainerHighest;
@@ -75,36 +135,35 @@ class GoalCell extends StatelessWidget {
   }
 
   Widget _buildFilledCell(ColorScheme cs) {
-    if (status == GoalStatus.completed &&
-        imageUrl != null &&
-        imageUrl!.isNotEmpty) {
+    if (widget.status == GoalStatus.completed &&
+        widget.imageUrl != null &&
+        widget.imageUrl!.isNotEmpty) {
       return _buildPhotoCell(cs);
     }
-    if (status == GoalStatus.completed && icon != null && icon!.isNotEmpty) {
+    if (widget.status == GoalStatus.completed &&
+        widget.icon != null &&
+        widget.icon!.isNotEmpty) {
       return _buildIconCell(cs);
     }
     return _buildTextCell(cs);
   }
 
   Widget _buildPhotoCell(ColorScheme cs) {
-    final fullUrl = imageUrl!.startsWith('http')
-        ? imageUrl!
-        : '${ApiConstants.baseUrl}$imageUrl';
+    final fullUrl = widget.imageUrl!.startsWith('http')
+        ? widget.imageUrl!
+        : '${ApiConstants.baseUrl}${widget.imageUrl}';
     return Stack(
       fit: StackFit.expand,
       children: [
         CachedNetworkImage(
           imageUrl: fullUrl,
           fit: BoxFit.cover,
-          placeholder: (_, __) =>
-              Container(color: cs.primaryContainer),
+          placeholder: (_, __) => Container(color: cs.primaryContainer),
           errorWidget: (_, __, ___) => Container(
             color: cs.primaryContainer,
-            child: Icon(Icons.check_circle,
-                color: cs.primary, size: 24),
+            child: Icon(Icons.check_circle, color: cs.primary, size: 24),
           ),
         ),
-        // Gradient overlay for text
         Positioned(
           left: 0,
           right: 0,
@@ -119,7 +178,7 @@ class GoalCell extends StatelessWidget {
               ),
             ),
             child: Text(
-              goalTitle!,
+              widget.goalTitle!,
               style: AppTypography.caption.copyWith(
                 color: Colors.white,
                 fontWeight: FontWeight.w600,
@@ -131,7 +190,6 @@ class GoalCell extends StatelessWidget {
             ),
           ),
         ),
-        // Checkmark badge
         Positioned(
           top: 4,
           right: 4,
@@ -141,8 +199,7 @@ class GoalCell extends StatelessWidget {
               color: Colors.white,
               shape: BoxShape.circle,
             ),
-            child:
-                Icon(Icons.check_circle, color: cs.primary, size: 14),
+            child: Icon(Icons.check_circle, color: cs.primary, size: 14),
           ),
         ),
       ],
@@ -156,12 +213,12 @@ class GoalCell extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(icon!, style: const TextStyle(fontSize: 28)),
+              Text(widget.icon!, style: const TextStyle(fontSize: 28)),
               const SizedBox(height: 2),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 4),
                 child: Text(
-                  goalTitle!,
+                  widget.goalTitle!,
                   style: AppTypography.caption.copyWith(
                     color: cs.onPrimaryContainer,
                     fontWeight: FontWeight.w600,
@@ -189,11 +246,11 @@ class GoalCell extends StatelessWidget {
       children: [
         Center(
           child: Padding(
-            padding: EdgeInsets.fromLTRB(6, 6, 6, progress > 0 ? 12 : 6),
+            padding: const EdgeInsets.all(6),
             child: Text(
-              goalTitle!,
+              widget.goalTitle!,
               style: AppTypography.bodySmall.copyWith(
-                color: status == GoalStatus.completed
+                color: widget.status == GoalStatus.completed
                     ? cs.onPrimaryContainer
                     : cs.onSurface,
                 fontWeight: FontWeight.w500,
@@ -205,38 +262,33 @@ class GoalCell extends StatelessWidget {
           ),
         ),
         Positioned(
-          top: 4,
-          right: 4,
-          child: _buildStatusIcon(cs),
+          top: 3,
+          right: 3,
+          child: _buildStatusIndicator(cs),
         ),
-        if (progress > 0 && progress < 100)
-          Positioned(
-            left: 4,
-            right: 4,
-            bottom: 4,
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: progress / 100,
-                minHeight: 4,
-                backgroundColor: cs.outline.withValues(alpha: 0.2),
-                color: cs.tertiary,
-              ),
-            ),
-          ),
       ],
     );
   }
 
-  Widget _buildStatusIcon(ColorScheme cs) {
-    switch (status) {
+  Widget _buildStatusIndicator(ColorScheme cs) {
+    switch (widget.status) {
       case GoalStatus.inProgress:
-        return Icon(Icons.timelapse, color: cs.tertiary, size: 16);
+        // Mini circular progress ring
+        return SizedBox(
+          width: 18,
+          height: 18,
+          child: CircularProgressIndicator(
+            value: widget.progress / 100,
+            strokeWidth: 2.5,
+            strokeCap: StrokeCap.round,
+            backgroundColor: cs.outline.withValues(alpha: 0.15),
+            color: cs.tertiary,
+          ),
+        );
       case GoalStatus.completed:
         return Icon(Icons.check_circle, color: cs.primary, size: 16);
       case GoalStatus.notStarted:
         return const SizedBox.shrink();
     }
   }
-
 }

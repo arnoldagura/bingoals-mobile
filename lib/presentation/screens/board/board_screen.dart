@@ -11,6 +11,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../core/constants/api_constants.dart';
+import '../../../core/constants/board_categories.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/typography.dart';
 import '../../../data/api/websocket_service.dart';
@@ -40,6 +41,7 @@ class BoardScreen extends ConsumerStatefulWidget {
 class _BoardScreenState extends ConsumerState<BoardScreen> {
   BoardViewMode _viewMode = BoardViewMode.grid;
   final _goalTitleController = TextEditingController();
+  final _notesController = TextEditingController();
   late final ConfettiController _confettiController;
   StreamSubscription<BoardEvent>? _wsSubscription;
   bool _wsConnected = false;
@@ -55,6 +57,7 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
   void dispose() {
     _wsSubscription?.cancel();
     _goalTitleController.dispose();
+    _notesController.dispose();
     _confettiController.dispose();
     super.dispose();
   }
@@ -139,8 +142,10 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
   void _showGoalDialog(Board board, int position) {
     final goal = board.goals[position];
     _goalTitleController.text = goal.title ?? '';
+    _notesController.text = goal.reflection?.notes ?? '';
     final miniGoalTitleController = TextEditingController();
     final miniGoalPctController = TextEditingController();
+    final cat = BoardCategory.fromKey(board.category);
 
     showStyledBottomSheet(
       context: context,
@@ -149,218 +154,690 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
           final latestBoard =
               sheetRef.watch(boardDetailProvider(widget.boardId)).valueOrNull;
           final latestGoal = latestBoard?.goals[position] ?? goal;
+          final colorScheme = Theme.of(sheetContext).colorScheme;
 
-          return StyledBottomSheetContent(
-            title: goal.isEmpty ? 'Add Goal' : 'Edit Goal',
-            showClose: true,
-            child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    StyledTextField(
-                      controller: _goalTitleController,
-                      autofocus: goal.isEmpty,
-                      hintText: 'Enter your goal...',
-                      labelText: 'Goal Title',
-                      prefixIcon: Icons.flag_outlined,
-                      onSubmitted: (_) => _saveGoal(position),
+          // Small caps section label helper
+          Widget sectionLabel(String text) => Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Text(
+                  text,
+                  style: AppTypography.labelSmall.copyWith(
+                    letterSpacing: 1.5,
+                    fontWeight: FontWeight.w700,
+                    color: colorScheme.onSurface.withValues(alpha: 0.4),
+                  ),
+                ),
+              );
+
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ── Drag handle ──
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 12, bottom: 8),
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: colorScheme.onSurface.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(2),
                     ),
-                    if (!latestGoal.isEmpty) ...[
-                      const SizedBox(height: 20),
-                      if (latestGoal.miniGoals.isNotEmpty) ...[
-                        Row(
-                          children: [
-                            Expanded(
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(4),
-                                child: LinearProgressIndicator(
-                                  value: latestGoal.progress / 100,
-                                  minHeight: 6,
-                                  backgroundColor: Colors.grey.shade200,
+                  ),
+                ),
+              ),
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.fromLTRB(
+                    24, 8, 24,
+                    MediaQuery.of(sheetContext).viewInsets.bottom + 24,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // ── Category chip + close button ──
+                      Row(
+                        children: [
+                          if (cat != null) ...[
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: cat.color.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(cat.icon,
+                                      size: 12, color: cat.color),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    cat.label,
+                                    style: AppTypography.caption.copyWith(
+                                      color: cat.color,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ] else ...[
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: colorScheme.onSurface
+                                    .withValues(alpha: 0.06),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                board.title,
+                                style: AppTypography.caption.copyWith(
+                                  color: colorScheme.onSurface
+                                      .withValues(alpha: 0.5),
+                                  fontWeight: FontWeight.w500,
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 8),
-                            Text('${latestGoal.progress}%',
-                                style: AppTypography.labelSmall),
                           ],
-                        ),
-                        const SizedBox(height: 12),
-                      ],
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text('Mini-Goals',
-                              style: AppTypography.labelMedium
-                                  .copyWith(fontWeight: FontWeight.w600)),
-                          TextButton.icon(
-                            onPressed: () => _showAddMiniGoalDialog(
-                              sheetContext,
-                              position,
-                              latestGoal,
-                              miniGoalTitleController,
-                              miniGoalPctController,
+                          const Spacer(),
+                          GestureDetector(
+                            onTap: () => Navigator.pop(sheetContext),
+                            child: Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: colorScheme.onSurface
+                                    .withValues(alpha: 0.06),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.close,
+                                size: 16,
+                                color: colorScheme.onSurface
+                                    .withValues(alpha: 0.5),
+                              ),
                             ),
-                            icon: const Icon(Icons.add, size: 16),
-                            label: const Text('Add'),
                           ),
                         ],
                       ),
-                      if (latestGoal.miniGoals.isEmpty)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: Text(
-                            'Break this goal into smaller tasks',
-                            style: AppTypography.bodySmall.copyWith(
-                              color: Colors.grey,
-                            ),
-                          ),
+                      const SizedBox(height: 16),
+
+                      // ── Goal title ──
+                      TextField(
+                        controller: _goalTitleController,
+                        autofocus: goal.isEmpty,
+                        style: AppTypography.headlineLarge.copyWith(
+                          color: colorScheme.onSurface,
+                          decoration: TextDecoration.underline,
+                          decorationColor:
+                              colorScheme.onSurface.withValues(alpha: 0.2),
+                          decorationThickness: 1.5,
                         ),
-                      ...latestGoal.miniGoals.map((mg) => ListTile(
-                            contentPadding: EdgeInsets.zero,
-                            leading: Checkbox(
-                              value: mg.isComplete,
-                              onChanged: (_) async {
-                                try {
-                                  await ref.read(boardActionsProvider).toggleMiniGoal(
-                                      widget.boardId, position, mg.id);
-                                } catch (e) {
-                                  _showError(e);
-                                }
-                              },
-                            ),
-                            title: Text(
-                              mg.title,
-                              style: TextStyle(
-                                decoration: mg.isComplete
-                                    ? TextDecoration.lineThrough
-                                    : null,
-                              ),
-                            ),
-                            onTap: () => _showEditMiniGoalDialog(
-                              sheetContext,
-                              position,
-                              latestGoal,
-                              mg,
-                            ),
-                            trailing: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text('${mg.percentage}%',
-                                    style: AppTypography.caption),
-                                const SizedBox(width: 4),
-                                IconButton(
-                                  icon: const Icon(Icons.close, size: 16),
-                                  onPressed: () async {
-                                    try {
-                                      await ref
-                                          .read(boardActionsProvider)
-                                          .deleteMiniGoal(widget.boardId,
-                                              position, mg.id);
-                                    } catch (e) {
-                                      _showError(e);
-                                    }
-                                  },
-                                ),
-                              ],
-                            ),
-                          )),
-                    ],
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        if (!goal.isEmpty &&
-                            latestGoal.miniGoals.isEmpty) ...[
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              onPressed: () async {
-                                Navigator.pop(context);
-                                try {
-                                  await ref
-                                      .read(boardActionsProvider)
-                                      .toggleGoalCompletion(
-                                          widget.boardId, position);
-                                } catch (e) {
-                                  _showError(e);
-                                }
-                              },
-                              icon: Icon(
-                                goal.isCompleted
-                                    ? Icons.close
-                                    : Icons.check_circle_outline,
-                              ),
-                              label: Text(
-                                goal.isCompleted
-                                    ? 'Mark Incomplete'
-                                    : 'Mark Complete',
-                              ),
-                            ),
+                        decoration: InputDecoration(
+                          border: InputBorder.none,
+                          hintText: goal.isEmpty
+                              ? 'Add your goal...'
+                              : 'Goal title...',
+                          hintStyle: AppTypography.headlineLarge.copyWith(
+                            color:
+                                colorScheme.onSurface.withValues(alpha: 0.25),
                           ),
-                          const SizedBox(width: 12),
-                        ],
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: () => _saveGoal(position),
-                            child: const Text('Save'),
-                          ),
+                          contentPadding: EdgeInsets.zero,
                         ),
-                      ],
-                    ),
-                    if (!goal.isEmpty) ...[
-                      const SizedBox(height: 12),
-                      SizedBox(
-                        width: double.infinity,
-                        child: TextButton.icon(
-                          onPressed: () {
-                            showDialog(
-                              context: sheetContext,
-                              builder: (dialogCtx) => AlertDialog(
-                                title: const Text('Delete Goal?'),
-                                content: const Text(
-                                    'This will clear the goal, its mini-goals, and reflection. This cannot be undone.'),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () =>
-                                        Navigator.pop(dialogCtx),
-                                    child: const Text('Cancel'),
+                        onSubmitted: (_) => _saveGoal(position),
+                      ),
+                      const SizedBox(height: 24),
+
+                      // ── Milestones (only for existing goals) ──
+                      if (!latestGoal.isEmpty) ...[
+                        // ── Mood color picker ──
+                        sectionLabel('MOOD'),
+                        _MoodPicker(
+                          currentMood: latestGoal.mood,
+                          onMoodSelected: (mood) async {
+                            try {
+                              await ref
+                                  .read(boardActionsProvider)
+                                  .updateGoalMood(
+                                      widget.boardId, position, mood);
+                            } catch (e) {
+                              _showError(e);
+                            }
+                          },
+                        ),
+                        const SizedBox(height: 20),
+                        sectionLabel('MILESTONES'),
+                        if (latestGoal.miniGoals.isNotEmpty) ...[
+                          Row(
+                            children: [
+                              Expanded(
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(6),
+                                  child: LinearProgressIndicator(
+                                    value: latestGoal.progress / 100,
+                                    minHeight: 8,
+                                    backgroundColor: colorScheme.onSurface
+                                        .withValues(alpha: 0.08),
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      _moodColor(latestGoal.mood, colorScheme),
+                                    ),
                                   ),
-                                  TextButton(
-                                    onPressed: () async {
-                                      Navigator.pop(dialogCtx);
-                                      Navigator.pop(sheetContext);
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Text(
+                                '${latestGoal.progress}%',
+                                style: AppTypography.labelSmall.copyWith(
+                                  color: colorScheme.onSurface
+                                      .withValues(alpha: 0.55),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 14),
+                        ],
+                        // Milestone rows with circle checkboxes
+                        ...latestGoal.miniGoals.map((mg) => Padding(
+                              padding:
+                                  const EdgeInsets.only(bottom: 12),
+                              child: Row(
+                                children: [
+                                  GestureDetector(
+                                    onTap: () async {
                                       try {
                                         await ref
                                             .read(boardActionsProvider)
-                                            .clearGoal(widget.boardId,
-                                                position);
+                                            .toggleMiniGoal(widget.boardId,
+                                                position, mg.id);
                                       } catch (e) {
                                         _showError(e);
                                       }
                                     },
-                                    child: Text('Delete',
-                                        style: TextStyle(
-                                            color: Colors.red.shade700)),
+                                    child: AnimatedContainer(
+                                      duration:
+                                          const Duration(milliseconds: 200),
+                                      width: 22,
+                                      height: 22,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color: mg.isComplete
+                                              ? colorScheme.primary
+                                              : colorScheme.onSurface
+                                                  .withValues(alpha: 0.25),
+                                          width: 1.5,
+                                        ),
+                                        color: mg.isComplete
+                                            ? colorScheme.primary
+                                            : Colors.transparent,
+                                      ),
+                                      child: mg.isComplete
+                                          ? Icon(
+                                              Icons.check,
+                                              size: 13,
+                                              color: colorScheme.onPrimary,
+                                            )
+                                          : null,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: GestureDetector(
+                                      onTap: () => _showEditMiniGoalDialog(
+                                        sheetContext,
+                                        position,
+                                        latestGoal,
+                                        mg,
+                                      ),
+                                      child: Text(
+                                        mg.title,
+                                        style:
+                                            AppTypography.bodyMedium.copyWith(
+                                          color: mg.isComplete
+                                              ? colorScheme.onSurface
+                                                  .withValues(alpha: 0.4)
+                                              : colorScheme.onSurface,
+                                          decoration: mg.isComplete
+                                              ? TextDecoration.lineThrough
+                                              : null,
+                                          decorationColor: colorScheme.onSurface
+                                              .withValues(alpha: 0.4),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  Text(
+                                    '${mg.percentage}%',
+                                    style: AppTypography.caption.copyWith(
+                                      color: colorScheme.onSurface
+                                          .withValues(alpha: 0.35),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  // Camera icon for memory upload
+                                  GestureDetector(
+                                    onTap: () => _pickImageForMilestone(
+                                        sheetContext, position, mg.id),
+                                    child: mg.imageUrl != null
+                                        ? ClipRRect(
+                                            borderRadius:
+                                                BorderRadius.circular(4),
+                                            child: Image.network(
+                                              mg.imageUrl!.startsWith('http')
+                                                  ? mg.imageUrl!
+                                                  : '${ApiConstants.baseUrl}${mg.imageUrl}',
+                                              width: 22,
+                                              height: 22,
+                                              fit: BoxFit.cover,
+                                              errorBuilder: (_, _, _) => Icon(
+                                                Icons.add_a_photo_outlined,
+                                                size: 16,
+                                                color: colorScheme.onSurface
+                                                    .withValues(alpha: 0.3),
+                                              ),
+                                            ),
+                                          )
+                                        : Icon(
+                                            Icons.add_a_photo_outlined,
+                                            size: 16,
+                                            color: colorScheme.onSurface
+                                                .withValues(alpha: 0.3),
+                                          ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  GestureDetector(
+                                    onTap: () async {
+                                      try {
+                                        await ref
+                                            .read(boardActionsProvider)
+                                            .deleteMiniGoal(widget.boardId,
+                                                position, mg.id);
+                                      } catch (e) {
+                                        _showError(e);
+                                      }
+                                    },
+                                    child: Icon(
+                                      Icons.close,
+                                      size: 16,
+                                      color: colorScheme.onSurface
+                                          .withValues(alpha: 0.25),
+                                    ),
                                   ),
                                 ],
                               ),
-                            );
-                          },
-                          icon: Icon(Icons.delete_outline,
-                              size: 18, color: Colors.red.shade700),
-                          label: Text('Delete Goal',
-                              style:
-                                  TextStyle(color: Colors.red.shade700)),
+                            )),
+                        // + Add Milestone
+                        GestureDetector(
+                          onTap: () => _showAddMiniGoalDialog(
+                            sheetContext,
+                            position,
+                            latestGoal,
+                            miniGoalTitleController,
+                            miniGoalPctController,
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.only(bottom: 4),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.add,
+                                  size: 16,
+                                  color: colorScheme.onSurface
+                                      .withValues(alpha: 0.4),
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'Add Milestone',
+                                  style: AppTypography.bodySmall.copyWith(
+                                    color: colorScheme.onSurface
+                                        .withValues(alpha: 0.4),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+
+                        // ── Journal Notes ──
+                        sectionLabel('JOURNAL NOTES'),
+                        TextField(
+                          controller: _notesController,
+                          maxLines: 3,
+                          style: AppTypography.bodyMedium.copyWith(
+                            color: colorScheme.onSurface,
+                          ),
+                          decoration: InputDecoration(
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                color: colorScheme.onSurface
+                                    .withValues(alpha: 0.12),
+                              ),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                color: colorScheme.onSurface
+                                    .withValues(alpha: 0.12),
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                color: colorScheme.onSurface
+                                    .withValues(alpha: 0.35),
+                              ),
+                            ),
+                            hintText: 'How is this goal going?',
+                            hintStyle: AppTypography.bodyMedium.copyWith(
+                              color:
+                                  colorScheme.onSurface.withValues(alpha: 0.3),
+                            ),
+                            filled: true,
+                            fillColor: colorScheme.onSurface
+                                .withValues(alpha: 0.03),
+                            contentPadding: const EdgeInsets.all(14),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+
+                        // ── Memories ──
+                        sectionLabel('MEMORIES'),
+                        Row(
+                          children: [
+                            if (latestGoal.imageUrl != null) ...[
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(10),
+                                child: Image.network(
+                                  latestGoal.imageUrl!,
+                                  width: 90,
+                                  height: 90,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, _, _) =>
+                                      const SizedBox.shrink(),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                            ],
+                            // Add memory placeholder
+                            GestureDetector(
+                              onTap: () => _pickImageForGoal(
+                                  sheetContext, position),
+                              child: Container(
+                                width: 90,
+                                height: 90,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                    color: colorScheme.onSurface
+                                        .withValues(alpha: 0.2),
+                                    style: BorderStyle.solid,
+                                    width: 1.5,
+                                  ),
+                                  color: colorScheme.onSurface
+                                      .withValues(alpha: 0.03),
+                                ),
+                                child: Column(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.add_a_photo_outlined,
+                                      size: 22,
+                                      color: colorScheme.onSurface
+                                          .withValues(alpha: 0.3),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Add memory',
+                                      style:
+                                          AppTypography.caption.copyWith(
+                                        color: colorScheme.onSurface
+                                            .withValues(alpha: 0.35),
+                                        fontSize: 10,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 28),
+                      ],
+
+                      // ── Stamp Complete / Mark Incomplete ──
+                      if (!goal.isEmpty && latestGoal.miniGoals.isEmpty) ...[
+                        SizedBox(
+                          width: double.infinity,
+                          height: 52,
+                          child: ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: goal.isCompleted
+                                  ? colorScheme.onSurface.withValues(alpha: 0.08)
+                                  : colorScheme.onSurface,
+                              foregroundColor: goal.isCompleted
+                                  ? colorScheme.onSurface
+                                  : colorScheme.surface,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(50),
+                                side: goal.isCompleted
+                                    ? BorderSide(
+                                        color: colorScheme.onSurface
+                                            .withValues(alpha: 0.15))
+                                    : BorderSide.none,
+                              ),
+                            ),
+                            icon: Icon(
+                              goal.isCompleted
+                                  ? Icons.undo
+                                  : Icons.verified_outlined,
+                              size: 18,
+                            ),
+                            label: Text(
+                              goal.isCompleted
+                                  ? 'Mark Incomplete'
+                                  : 'Stamp Complete',
+                              style: AppTypography.button.copyWith(
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                            onPressed: () async {
+                              Navigator.pop(context);
+                              try {
+                                await ref
+                                    .read(boardActionsProvider)
+                                    .toggleGoalCompletion(
+                                        widget.boardId, position);
+                              } catch (e) {
+                                _showError(e);
+                              }
+                            },
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+
+                      // ── Save ──
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(
+                              color: colorScheme.onSurface
+                                  .withValues(alpha: 0.2),
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(50),
+                            ),
+                            padding:
+                                const EdgeInsets.symmetric(vertical: 14),
+                          ),
+                          onPressed: () => _saveGoal(position),
+                          child: Text(
+                            'Save',
+                            style: AppTypography.button.copyWith(
+                              color: colorScheme.onSurface,
+                            ),
+                          ),
                         ),
                       ),
+
+                      // ── Delete Goal ──
+                      if (!goal.isEmpty) ...[
+                        const SizedBox(height: 12),
+                        Center(
+                          child: GestureDetector(
+                            onTap: () {
+                              showDialog(
+                                context: sheetContext,
+                                builder: (dialogCtx) => AlertDialog(
+                                  title: const Text('Delete Goal?'),
+                                  content: const Text(
+                                      'This will clear the goal, its milestones, and notes. This cannot be undone.'),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.pop(dialogCtx),
+                                      child: const Text('Cancel'),
+                                    ),
+                                    TextButton(
+                                      onPressed: () async {
+                                        Navigator.pop(dialogCtx);
+                                        Navigator.pop(sheetContext);
+                                        try {
+                                          await ref
+                                              .read(boardActionsProvider)
+                                              .clearGoal(widget.boardId,
+                                                  position);
+                                        } catch (e) {
+                                          _showError(e);
+                                        }
+                                      },
+                                      child: Text('Delete',
+                                          style: TextStyle(
+                                              color: Colors.red.shade700)),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.delete_outline,
+                                    size: 14,
+                                    color: colorScheme.onSurface
+                                        .withValues(alpha: 0.35)),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'Delete Goal',
+                                  style: AppTypography.caption.copyWith(
+                                    color: colorScheme.onSurface
+                                        .withValues(alpha: 0.35),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
               ),
+            ],
           );
         },
       ),
     );
+  }
+
+  void _pickImageForGoal(BuildContext sheetContext, int position) async {
+    final source = await showModalBottomSheet<ImageSource>(
+      context: sheetContext,
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt_outlined),
+              title: const Text('Take Photo'),
+              onTap: () => Navigator.pop(sheetContext, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Choose from Gallery'),
+              onTap: () => Navigator.pop(sheetContext, ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (source == null) return;
+    final picker = ImagePicker();
+    final image = await picker.pickImage(
+      source: source,
+      maxWidth: 800,
+      maxHeight: 800,
+      imageQuality: 85,
+    );
+    if (image == null) return;
+    try {
+      await ref
+          .read(boardActionsProvider)
+          .uploadGoalImage(widget.boardId, position, image.path);
+    } catch (e) {
+      _showError(e);
+    }
+  }
+
+  void _pickImageForMilestone(
+      BuildContext sheetContext, int position, String miniGoalId) async {
+    final source = await showModalBottomSheet<ImageSource>(
+      context: sheetContext,
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt_outlined),
+              title: const Text('Take Photo'),
+              onTap: () => Navigator.pop(sheetContext, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Choose from Gallery'),
+              onTap: () => Navigator.pop(sheetContext, ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (source == null) return;
+    final picker = ImagePicker();
+    final image = await picker.pickImage(
+      source: source,
+      maxWidth: 800,
+      maxHeight: 800,
+      imageQuality: 85,
+    );
+    if (image == null) return;
+    try {
+      final actions = ref.read(boardActionsProvider);
+      final url = await actions.uploadImage(image.path);
+      await actions.updateMilestoneImage(
+          widget.boardId, position, miniGoalId, url);
+    } catch (e) {
+      _showError(e);
+    }
   }
 
   void _showAddMiniGoalDialog(
@@ -379,14 +856,14 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
     showDialog(
       context: sheetContext,
       builder: (ctx) => AlertDialog(
-        title: const Text('Add Mini-Goal'),
+        title: const Text('Add Milestone'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             StyledTextField(
               controller: titleCtrl,
               autofocus: true,
-              hintText: 'Mini-goal title',
+              hintText: 'Milestone title',
               labelText: 'Title',
               prefixIcon: Icons.check_circle_outline,
             ),
@@ -445,14 +922,14 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
     showDialog(
       context: sheetContext,
       builder: (ctx) => AlertDialog(
-        title: const Text('Edit Mini-Goal'),
+        title: const Text('Edit Milestone'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             StyledTextField(
               controller: titleCtrl,
               autofocus: true,
-              hintText: 'Mini-goal title',
+              hintText: 'Milestone title',
               labelText: 'Title',
               prefixIcon: Icons.check_circle_outline,
             ),
@@ -785,6 +1262,7 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
             .read(boardActionsProvider)
             .toggleGoalCompletion(widget.boardId, position);
         if (!mounted) return;
+        HapticFeedback.heavyImpact();
         _confettiController.play();
         final milestones =
             (result['milestones'] as List?)?.cast<String>() ?? [];
@@ -1138,11 +1616,14 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
 
   Future<void> _saveGoal(int position) async {
     final title = _goalTitleController.text.trim();
+    final notes = _notesController.text.trim();
     Navigator.pop(context);
     try {
-      await ref
-          .read(boardActionsProvider)
-          .updateGoalTitle(widget.boardId, position, title);
+      final actions = ref.read(boardActionsProvider);
+      await actions.updateGoalTitle(widget.boardId, position, title);
+      if (notes.isNotEmpty) {
+        await actions.upsertReflection(widget.boardId, position, notes: notes);
+      }
     } catch (e) {
       _showError(e);
     }
@@ -1592,10 +2073,13 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
                 color: colorScheme.outline.withValues(alpha: 0.1),
               ),
             ),
-            child: GoalGrid(
-            goals: board.goals,
-            gridSize: board.gridSize,
+            child: Hero(
+              tag: 'board-grid-${board.id}',
+              child: GoalGrid(
+              goals: board.goals,
+              gridSize: board.gridSize,
             onCellTap: (index) {
+              HapticFeedback.lightImpact();
               final goal = board.goals[index];
               if (goal.isCompleted) {
                 _showReflectionSheet(board, index);
@@ -1606,6 +2090,8 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
             onCellLongPress: (index) async {
               final goal = board.goals[index];
               if (goal.isEmpty) return;
+
+              HapticFeedback.mediumImpact();
 
               // Has mini-goals and not yet completed → show checklist
               if (goal.miniGoals.isNotEmpty && !goal.isCompleted) {
@@ -1628,6 +2114,7 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
                 _showError(e);
               }
             },
+          ),
           ),
           ),
         ),
@@ -2063,6 +2550,73 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
           ),
         ),
       ],
+    );
+  }
+}
+
+// ── Mood color helpers ────────────────────────────────────────────────────────
+
+const _moodColors = {
+  'sage': Color(0xFF7CA982),
+  'terracotta': Color(0xFFBF6B52),
+  'slate': Color(0xFF6B8CAE),
+  'sunrise': Color(0xFFD4A847),
+};
+
+Color _moodColor(String? mood, ColorScheme colorScheme) {
+  if (mood == null) return colorScheme.primary.withValues(alpha: 0.65);
+  return (_moodColors[mood] ?? colorScheme.primary).withValues(alpha: 0.85);
+}
+
+class _MoodPicker extends StatelessWidget {
+  final String? currentMood;
+  final void Function(String?) onMoodSelected;
+
+  const _MoodPicker({required this.currentMood, required this.onMoodSelected});
+
+  @override
+  Widget build(BuildContext context) {
+    final moods = [
+      ('sage', const Color(0xFF7CA982), 'Sage'),
+      ('terracotta', const Color(0xFFBF6B52), 'Terracotta'),
+      ('slate', const Color(0xFF6B8CAE), 'Slate'),
+      ('sunrise', const Color(0xFFD4A847), 'Sunrise'),
+    ];
+
+    return Row(
+      children: moods.map((m) {
+        final isSelected = currentMood == m.$1;
+        return Padding(
+          padding: const EdgeInsets.only(right: 10),
+          child: GestureDetector(
+            onTap: () => onMoodSelected(isSelected ? null : m.$1),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              width: isSelected ? 30 : 26,
+              height: isSelected ? 30 : 26,
+              decoration: BoxDecoration(
+                color: m.$2,
+                shape: BoxShape.circle,
+                border: isSelected
+                    ? Border.all(
+                        color: m.$2.withValues(alpha: 0.4),
+                        width: 3,
+                      )
+                    : null,
+                boxShadow: isSelected
+                    ? [
+                        BoxShadow(
+                          color: m.$2.withValues(alpha: 0.4),
+                          blurRadius: 6,
+                          spreadRadius: 1,
+                        )
+                      ]
+                    : null,
+              ),
+            ),
+          ),
+        );
+      }).toList(),
     );
   }
 }

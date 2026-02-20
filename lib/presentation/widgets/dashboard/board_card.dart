@@ -5,7 +5,7 @@ import '../../../data/models/models.dart';
 import '../common/glass_card.dart';
 import '../common/circular_progress.dart';
 
-class BoardCard extends StatelessWidget {
+class BoardCard extends StatefulWidget {
   final BoardSummary board;
   final VoidCallback? onTap;
   final VoidCallback? onRename;
@@ -22,12 +22,56 @@ class BoardCard extends StatelessWidget {
   });
 
   @override
+  State<BoardCard> createState() => _BoardCardState();
+}
+
+class _BoardCardState extends State<BoardCard>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _scaleController;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _scaleController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 100),
+      reverseDuration: const Duration(milliseconds: 300),
+    );
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.97).animate(
+      CurvedAnimation(
+        parent: _scaleController,
+        curve: Curves.easeInOut,
+        reverseCurve: Curves.elasticOut,
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _scaleController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final board = widget.board;
 
-    return GlassCard(
-      onTap: onTap,
+    return AnimatedBuilder(
+      animation: _scaleAnimation,
+      builder: (context, child) => Transform.scale(
+        scale: _scaleAnimation.value,
+        child: child,
+      ),
+      child: GlassCard(
+      onTap: () {
+        _scaleController.forward().then((_) {
+          _scaleController.reverse();
+          widget.onTap?.call();
+        });
+      },
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -99,13 +143,13 @@ class BoardCard extends StatelessWidget {
                       onSelected: (value) {
                         switch (value) {
                           case 'rename':
-                            onRename?.call();
+                            widget.onRename?.call();
                             break;
                           case 'default':
-                            onSetDefault?.call();
+                            widget.onSetDefault?.call();
                             break;
                           case 'delete':
-                            onDelete?.call();
+                            widget.onDelete?.call();
                             break;
                         }
                       },
@@ -195,9 +239,12 @@ class BoardCard extends StatelessWidget {
                     ),
                     const SizedBox(width: 16),
                     Expanded(
-                      child: _MiniGridPreview(
-                        completed: board.completedCount,
-                        gridSize: board.gridSize,
+                      child: Hero(
+                        tag: 'board-grid-${board.id}',
+                        child: _MiniGridPreview(
+                          completed: board.completedCount,
+                          gridSize: board.gridSize,
+                        ),
                       ),
                     ),
                   ],
@@ -234,6 +281,7 @@ class BoardCard extends StatelessWidget {
           ),
         ],
       ),
+    ),
     );
   }
 }

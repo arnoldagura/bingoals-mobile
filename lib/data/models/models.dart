@@ -8,3 +8,4 @@ export 'activity.dart';
 export 'reaction.dart';
 export 'comment.dart';
 export 'app_notification.dart';
+export 'gallery_item.dart';

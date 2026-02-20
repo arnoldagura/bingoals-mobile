@@ -12,6 +12,7 @@ import '../presentation/screens/board/board_screen.dart';
 import '../presentation/screens/notifications/notifications_screen.dart';
 import '../presentation/screens/settings/settings_screen.dart';
 import '../presentation/screens/vision_board/vision_board_screen.dart';
+import '../presentation/widgets/common/main_shell.dart';
 
 class AppRoutes {
   static const String splash = '/splash';
@@ -93,11 +94,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         name: 'onboarding',
         builder: (context, state) => const OnboardingScreen(),
       ),
-      GoRoute(
-        path: AppRoutes.dashboard,
-        name: 'dashboard',
-        builder: (context, state) => const DashboardScreen(),
-      ),
+      // Board detail — full screen, no bottom nav
       GoRoute(
         path: '/board/:boardId',
         name: 'board',
@@ -106,20 +103,31 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           return BoardScreen(boardId: boardId);
         },
       ),
-      GoRoute(
-        path: AppRoutes.visionBoard,
-        name: 'visionBoard',
-        builder: (context, state) => const VisionBoardScreen(),
-      ),
-      GoRoute(
-        path: AppRoutes.notifications,
-        name: 'notifications',
-        builder: (context, state) => const NotificationsScreen(),
-      ),
-      GoRoute(
-        path: AppRoutes.settings,
-        name: 'settings',
-        builder: (context, state) => const SettingsScreen(),
+      // Main shell — persistent bottom nav for the 4 tabs
+      ShellRoute(
+        builder: (context, state, child) => MainShell(child: child),
+        routes: [
+          GoRoute(
+            path: AppRoutes.dashboard,
+            name: 'dashboard',
+            builder: (context, state) => const DashboardScreen(),
+          ),
+          GoRoute(
+            path: AppRoutes.visionBoard,
+            name: 'visionBoard',
+            builder: (context, state) => const VisionBoardScreen(),
+          ),
+          GoRoute(
+            path: AppRoutes.notifications,
+            name: 'notifications',
+            builder: (context, state) => const NotificationsScreen(),
+          ),
+          GoRoute(
+            path: AppRoutes.settings,
+            name: 'settings',
+            builder: (context, state) => const SettingsScreen(),
+          ),
+        ],
       ),
     ],
     errorBuilder: (context, state) => Scaffold(

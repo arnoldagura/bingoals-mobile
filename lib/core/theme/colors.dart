@@ -12,12 +12,12 @@ class AppColors {
 
   // ============== LIGHT THEME ==============
 
-  static const Color backgroundLight = Color(0xFFFAFAFA);
-  static const Color surfaceLight = Color(0xFFFFFFFF);
+  static const Color backgroundLight = Color(0xFFFAF8F3); // warm parchment
+  static const Color surfaceLight = Color(0xFFF0EBE1);    // warm cream card
 
-  static const Color textPrimaryLight = Color(0xFF171717);
-  static const Color textSecondaryLight = Color(0xFF525252);
-  static const Color textMutedLight = Color(0xFF737373);
+  static const Color textPrimaryLight = Color(0xFF1C1917); // warm near-black
+  static const Color textSecondaryLight = Color(0xFF786B5E); // warm brown
+  static const Color textMutedLight = Color(0xFF9C8A7A);   // warm gray-brown
 
   // ============== DARK THEME ==============
 
@@ -46,9 +46,9 @@ class AppColors {
   static const Color goalCellDashed = Color(0xFFA3A3A3);
 
   // Card and border colors
-  static const Color cardBorderLight = Color(0xFFE5E5E5);
+  static const Color cardBorderLight = Color(0xFFE2D9CE); // warm border
   static const Color cardBorderDark = Color(0xFF262626);
-  static const Color divider = Color(0xFFE5E5E5);
+  static const Color divider = Color(0xFFE2D9CE);
 
   // Progress ring gradient (grayscale)
   static const List<Color> progressGradient = [
