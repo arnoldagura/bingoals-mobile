@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -30,21 +31,21 @@ class _VisionBoardScreenState extends ConsumerState<VisionBoardScreen> {
           error: (_, _) =>
               const Center(child: Text('Failed to load gallery')),
           data: (items) {
-            // Build board filter options from distinct boardIds
-            final boards = <String, String>{}; // boardId → boardTitle
+            final boards = <String, String>{};
             for (final item in items) {
               boards[item.boardId] = item.boardTitle;
             }
 
-            // Filter items
             final filtered = items.where((item) {
               if (_filter == 'all') return true;
               if (_filter == 'completed') return item.isComplete;
               return item.boardId == _filter;
             }).toList();
 
-            // Sort newest first
             filtered.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+            // Build layout rows: groups of 3 → 1 full-width + pair of 2
+            final rows = _buildRows(filtered);
 
             return CustomScrollView(
               slivers: [
@@ -62,9 +63,10 @@ class _VisionBoardScreenState extends ConsumerState<VisionBoardScreen> {
                           ),
                         ),
                         Text(
-                          'A collection of moments',
+                          '"Collect moments, not things."',
                           style: AppTypography.bodySmall.copyWith(
-                            color: colorScheme.onSurface.withValues(alpha: 0.5),
+                            color:
+                                colorScheme.onSurface.withValues(alpha: 0.5),
                             fontStyle: FontStyle.italic,
                           ),
                         ),
@@ -111,35 +113,27 @@ class _VisionBoardScreenState extends ConsumerState<VisionBoardScreen> {
                   ),
                 ),
 
-                // ── Grid or empty state ──
+                // ── Gallery or empty state ──
                 if (filtered.isEmpty)
                   SliverFillRemaining(
                     child: _EmptyGallery(colorScheme: colorScheme),
                   )
                 else ...[
                   SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                    sliver: SliverGrid(
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 12,
-                        mainAxisSpacing: 12,
-                        childAspectRatio: 0.72,
-                      ),
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                    sliver: SliverList(
                       delegate: SliverChildBuilderDelegate(
-                        (context, index) => _PolaroidCard(
-                          item: filtered[index],
-                          colorScheme: colorScheme,
-                          onTap: () => context.push(
-                            '/boards/${filtered[index].boardId}',
-                          ),
-                        ),
-                        childCount: filtered.length,
+                        (context, index) {
+                          final row = rows[index];
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 20),
+                            child: _buildRow(context, row, colorScheme),
+                          );
+                        },
+                        childCount: rows.length,
                       ),
                     ),
                   ),
-                  // "That's all for now." footer
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
@@ -163,16 +157,77 @@ class _VisionBoardScreenState extends ConsumerState<VisionBoardScreen> {
       ),
     );
   }
+
+  /// Groups items into rows: every 3 items → [featured, small, small]
+  List<_GalleryRow> _buildRows(List<GalleryItem> items) {
+    final rows = <_GalleryRow>[];
+    int i = 0;
+    while (i < items.length) {
+      final featured = items[i];
+      final pair = <GalleryItem>[];
+      if (i + 1 < items.length) pair.add(items[i + 1]);
+      if (i + 2 < items.length) pair.add(items[i + 2]);
+      rows.add(_GalleryRow(featured: featured, pair: pair));
+      i += 3;
+    }
+    return rows;
+  }
+
+  Widget _buildRow(
+      BuildContext context, _GalleryRow row, ColorScheme colorScheme) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Full-width featured card
+        _FeaturedCard(
+          item: row.featured,
+          colorScheme: colorScheme,
+          onTap: () => context.push('/boards/${row.featured.boardId}'),
+        ),
+        if (row.pair.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              for (int j = 0; j < row.pair.length; j++) ...[
+                if (j > 0) const SizedBox(width: 12),
+                Expanded(
+                  child: _SmallCard(
+                    item: row.pair[j],
+                    index: j,
+                    colorScheme: colorScheme,
+                    onTap: () =>
+                        context.push('/boards/${row.pair[j].boardId}'),
+                  ),
+                ),
+              ],
+              // If only one item in pair, add an empty placeholder
+              if (row.pair.length == 1) ...[
+                const SizedBox(width: 12),
+                const Expanded(child: SizedBox()),
+              ],
+            ],
+          ),
+        ],
+      ],
+    );
+  }
 }
 
-// ── Polaroid card ─────────────────────────────────────────────────────────────
+class _GalleryRow {
+  final GalleryItem featured;
+  final List<GalleryItem> pair;
 
-class _PolaroidCard extends StatelessWidget {
+  _GalleryRow({required this.featured, required this.pair});
+}
+
+// ── Featured (full-width) card ─────────────────────────────────────────────────
+
+class _FeaturedCard extends StatelessWidget {
   final GalleryItem item;
   final ColorScheme colorScheme;
   final VoidCallback onTap;
 
-  const _PolaroidCard({
+  const _FeaturedCard({
     required this.item,
     required this.colorScheme,
     required this.onTap,
@@ -181,7 +236,7 @@ class _PolaroidCard extends StatelessWidget {
   String _formatDate(DateTime dt) {
     const months = [
       'JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN',
-      'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'
+      'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC',
     ];
     return '${months[dt.month - 1]} ${dt.day}';
   }
@@ -197,80 +252,235 @@ class _PolaroidCard extends StatelessWidget {
 
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        decoration: BoxDecoration(
-          color: colorScheme.surface,
-          borderRadius: BorderRadius.circular(4),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.10),
-              blurRadius: 8,
-              offset: const Offset(0, 3),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Photo area (polaroid top)
-            Expanded(
-              child: Container(
-                margin: const EdgeInsets.fromLTRB(8, 8, 8, 0),
-                clipBehavior: Clip.antiAlias,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(2),
-                  color: colorScheme.onSurface.withValues(alpha: 0.06),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          // Card
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(4),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.12),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
                 ),
-                child: hasPhoto
-                    ? Image.network(
-                        imageUrl!,
-                        fit: BoxFit.cover,
-                        width: double.infinity,
-                        errorBuilder: (_, _, _) =>
-                            _PhotoPlaceholder(colorScheme: colorScheme),
-                      )
-                    : _PhotoPlaceholder(colorScheme: colorScheme),
-              ),
+              ],
             ),
-
-            // Polaroid label strip
-            Padding(
-              padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    item.title,
-                    style: AppTypography.labelMedium.copyWith(
-                      color: colorScheme.onSurface,
-                      fontStyle: FontStyle.italic,
-                      fontSize: 12,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Photo
+                ClipRRect(
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(4),
+                    topRight: Radius.circular(4),
                   ),
-                  const SizedBox(height: 4),
-                  Row(
+                  child: AspectRatio(
+                    aspectRatio: 16 / 9,
+                    child: hasPhoto
+                        ? CachedNetworkImage(
+                            imageUrl: imageUrl!,
+                            fit: BoxFit.cover,
+                            placeholder: (_, _) => Container(
+                              color: Colors.grey.shade100,
+                            ),
+                            errorWidget: (_, _, _) =>
+                                _PhotoPlaceholder(colorScheme: colorScheme),
+                          )
+                        : _PhotoPlaceholder(colorScheme: colorScheme),
+                  ),
+                ),
+                // Caption strip
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        _formatDate(item.createdAt),
-                        style: AppTypography.caption.copyWith(
-                          color:
-                              colorScheme.onSurface.withValues(alpha: 0.4),
-                          fontSize: 10,
-                          letterSpacing: 0.5,
+                        item.label.isNotEmpty ? item.label : item.title,
+                        style: const TextStyle(
+                          fontFamily: 'PlayfairDisplay',
+                          fontSize: 17,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87,
+                          height: 1.3,
                         ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      const Spacer(),
-                      if (item.isComplete)
-                        const Icon(
-                          Icons.check_circle,
-                          size: 13,
-                          color: Color(0xFF7CA982),
-                        ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Text(
+                            _formatDate(item.createdAt),
+                            style: const TextStyle(
+                              fontSize: 10,
+                              color: Colors.black38,
+                              letterSpacing: 1.0,
+                            ),
+                          ),
+                          if (item.boardTitle.isNotEmpty) ...[
+                            const SizedBox(width: 6),
+                            const Text(
+                              '•',
+                              style: TextStyle(
+                                  fontSize: 10, color: Colors.black26),
+                            ),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                item.boardTitle.toUpperCase(),
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  color: Colors.black38,
+                                  letterSpacing: 1.0,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
                     ],
                   ),
+                ),
+              ],
+            ),
+          ),
+          // Tape sticker at top-center
+          Positioned(
+            top: -10,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: Transform.rotate(
+                angle: 0.05,
+                child: Container(
+                  width: 52,
+                  height: 18,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFD9CFC4).withValues(alpha: 0.7),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Small card ─────────────────────────────────────────────────────────────────
+
+class _SmallCard extends StatelessWidget {
+  final GalleryItem item;
+  final int index;
+  final ColorScheme colorScheme;
+  final VoidCallback onTap;
+
+  static const _kTiltAngles = <double>[-0.03, 0.025, -0.02, 0.03];
+
+  const _SmallCard({
+    required this.item,
+    required this.index,
+    required this.colorScheme,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final hasPhoto = item.imageUrl != null && item.imageUrl!.isNotEmpty;
+    final imageUrl = hasPhoto
+        ? (item.imageUrl!.startsWith('http')
+            ? item.imageUrl!
+            : '${ApiConstants.baseUrl}${item.imageUrl}')
+        : null;
+
+    final angle = _kTiltAngles[index % _kTiltAngles.length];
+
+    return Transform.rotate(
+      angle: angle,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(3),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.12),
+                    blurRadius: 8,
+                    offset: const Offset(1, 3),
+                  ),
                 ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Square photo
+                  ClipRRect(
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(3),
+                      topRight: Radius.circular(3),
+                    ),
+                    child: AspectRatio(
+                      aspectRatio: 1,
+                      child: hasPhoto
+                          ? CachedNetworkImage(
+                              imageUrl: imageUrl!,
+                              fit: BoxFit.cover,
+                              placeholder: (_, _) => Container(
+                                color: Colors.grey.shade100,
+                              ),
+                              errorWidget: (_, _, _) =>
+                                  _PhotoPlaceholder(colorScheme: colorScheme),
+                            )
+                          : _PhotoPlaceholder(colorScheme: colorScheme),
+                    ),
+                  ),
+                  // Caption
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(8, 8, 8, 10),
+                    child: Text(
+                      item.label.isNotEmpty ? item.label : item.title,
+                      style: const TextStyle(
+                        fontFamily: 'PlayfairDisplay',
+                        fontSize: 12,
+                        fontStyle: FontStyle.italic,
+                        color: Colors.black87,
+                        height: 1.3,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Tape sticker
+            Positioned(
+              top: -8,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Transform.rotate(
+                  angle: index.isEven ? -0.1 : 0.08,
+                  child: Container(
+                    width: 36,
+                    height: 14,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFD9CFC4).withValues(alpha: 0.65),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
               ),
             ),
           ],
@@ -287,11 +497,14 @@ class _PhotoPlaceholder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Icon(
-        Icons.image_outlined,
-        size: 32,
-        color: colorScheme.onSurface.withValues(alpha: 0.2),
+    return Container(
+      color: colorScheme.onSurface.withValues(alpha: 0.04),
+      child: Center(
+        child: Icon(
+          Icons.image_outlined,
+          size: 32,
+          color: colorScheme.onSurface.withValues(alpha: 0.2),
+        ),
       ),
     );
   }
@@ -369,7 +582,7 @@ class _EmptyGallery extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Add a photo to any milestone\nand it will appear here.',
+              'Add a photo to any goal\nand it will appear here.',
               style: AppTypography.bodySmall.copyWith(
                 color: colorScheme.onSurface.withValues(alpha: 0.5),
                 fontStyle: FontStyle.italic,

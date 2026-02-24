@@ -42,6 +42,12 @@ class ApiConstants {
   static String reflection(String boardId, int position) =>
       '/api/boards/$boardId/goals/$position/reflection';
 
+  // Goal memories
+  static String goalMemories(String boardId, int position) =>
+      '/api/boards/$boardId/goals/$position/memories';
+  static String goalMemory(String boardId, int position, String memoryId) =>
+      '/api/boards/$boardId/goals/$position/memories/$memoryId';
+
   // Board invites & members
   static String boardInvites(String boardId) => '/api/boards/$boardId/invites';
   static String joinInvite(String code) => '/api/invites/$code/join';
@@ -76,11 +82,13 @@ class ApiConstants {
 
   static const String upload = '/api/upload';
   static const String gallery = '/api/gallery';
+  static const String journal = '/api/journal';
 
-  static const Duration connectTimeout = Duration(seconds: 30);
-  static const Duration receiveTimeout = Duration(seconds: 30);
+  static const Duration connectTimeout = Duration(seconds: 90);
+  static const Duration receiveTimeout = Duration(seconds: 90);
 
   static const String tokenKey = 'auth_token';
+  static const String userKey = 'auth_user';
 
   static const String googleServerClientId = '656331294595-huh2kgj7go6770uh1ueti0bqm63th7tj.apps.googleusercontent.com';
 }

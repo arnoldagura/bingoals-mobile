@@ -1,6 +1,7 @@
 class GalleryItem {
   final String milestoneId;
   final String title;
+  final String label;
   final String? imageUrl;
   final bool isComplete;
   final String goalTitle;
@@ -12,6 +13,7 @@ class GalleryItem {
   const GalleryItem({
     required this.milestoneId,
     required this.title,
+    this.label = '',
     this.imageUrl,
     required this.isComplete,
     required this.goalTitle,
@@ -25,6 +27,7 @@ class GalleryItem {
     return GalleryItem(
       milestoneId: json['milestoneId'] as String,
       title: json['title'] as String,
+      label: json['label'] as String? ?? '',
       imageUrl: json['imageUrl'] as String?,
       isComplete: json['isComplete'] as bool? ?? false,
       goalTitle: json['goalTitle'] as String? ?? '',

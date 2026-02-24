@@ -132,6 +132,15 @@ class AppTheme {
       progressIndicatorTheme: ProgressIndicatorThemeData(
         color: colors.primary,
       ),
+      chipTheme: ChipThemeData(
+        backgroundColor: colors.foreground.withValues(alpha: 0.06),
+        selectedColor: colors.primary.withValues(alpha: 0.15),
+        side: BorderSide(color: colors.border),
+        checkmarkColor: Colors.transparent,
+        labelStyle: AppTypography.labelSmall.copyWith(color: colors.foreground),
+        deleteIconColor: colors.muted,
+        showCheckmark: false,
+      ),
       dividerTheme: DividerThemeData(
         color: colors.border,
         thickness: 1,

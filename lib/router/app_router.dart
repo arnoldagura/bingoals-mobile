@@ -9,6 +9,7 @@ import '../presentation/screens/login/register_screen.dart';
 import '../presentation/screens/onboarding/onboarding_screen.dart';
 import '../presentation/screens/dashboard/dashboard_screen.dart';
 import '../presentation/screens/board/board_screen.dart';
+import '../presentation/screens/journal/journal_screen.dart';
 import '../presentation/screens/notifications/notifications_screen.dart';
 import '../presentation/screens/settings/settings_screen.dart';
 import '../presentation/screens/vision_board/vision_board_screen.dart';
@@ -22,6 +23,7 @@ class AppRoutes {
   static const String dashboard = '/';
   static const String board = '/board/:boardId';
   static const String visionBoard = '/vision-board';
+  static const String journal = '/journal';
   static const String notifications = '/notifications';
   static const String settings = '/settings';
 
@@ -35,8 +37,8 @@ class _RouterRefreshNotifier extends ChangeNotifier {
 final appRouterProvider = Provider<GoRouter>((ref) {
   final refreshNotifier = _RouterRefreshNotifier();
 
-  ref.listen(authProvider, (_, __) => refreshNotifier.notify());
-  ref.listen(onboardingCompletedProvider, (_, __) => refreshNotifier.notify());
+  ref.listen(authProvider, (_, _) => refreshNotifier.notify());
+  ref.listen(onboardingCompletedProvider, (_, _) => refreshNotifier.notify());
 
   return GoRouter(
     initialLocation: AppRoutes.splash,
@@ -48,22 +50,24 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           ref.read(onboardingCompletedProvider).valueOrNull ?? true;
 
       final isLoggedIn = authState.isLoggedIn;
-      final isLoading = authState.isLoading;
+      final isInitializing = authState.isInitializing;
       final currentPath = state.uri.path;
 
-      if (isLoading && currentPath == AppRoutes.splash) {
-        return null;
+      // Still determining auth state — always show splash
+      if (isInitializing) {
+        return currentPath == AppRoutes.splash ? null : AppRoutes.splash;
       }
 
-      if (!isLoading && !isLoggedIn && currentPath == AppRoutes.splash) {
-        return AppRoutes.login;
-      }
-
-      final isAuthPage = currentPath == AppRoutes.login ||
+      final isAuthPage =
+          currentPath == AppRoutes.login ||
           currentPath == AppRoutes.register ||
           currentPath == AppRoutes.splash;
 
       if (!isLoggedIn && !isAuthPage) {
+        return AppRoutes.login;
+      }
+
+      if (!isLoggedIn && currentPath == AppRoutes.splash) {
         return AppRoutes.login;
       }
 
@@ -118,6 +122,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const VisionBoardScreen(),
           ),
           GoRoute(
+            path: AppRoutes.journal,
+            name: 'journal',
+            builder: (context, state) => const JournalScreen(),
+          ),
+          GoRoute(
             path: AppRoutes.notifications,
             name: 'notifications',
             builder: (context, state) => const NotificationsScreen(),
@@ -130,10 +139,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         ],
       ),
     ],
-    errorBuilder: (context, state) => Scaffold(
-      body: Center(
-        child: Text('Page not found: ${state.uri}'),
-      ),
-    ),
+    errorBuilder: (context, state) =>
+        Scaffold(body: Center(child: Text('Page not found: ${state.uri}'))),
   );
 });

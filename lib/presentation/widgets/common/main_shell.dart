@@ -5,8 +5,6 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/typography.dart';
 import '../../../data/providers/notifications_provider.dart';
 
-/// Persistent bottom nav shell. Uses a Column (no Scaffold) so inner screens
-/// keep their own Scaffold without nesting issues.
 class MainShell extends ConsumerWidget {
   final Widget child;
 
@@ -31,15 +29,9 @@ class MainShell extends ConsumerWidget {
       children: [
         Expanded(child: child),
         Container(
-          color: colorScheme.surface,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Divider(
-                height: 1,
-                thickness: 1,
-                color: colorScheme.onSurface.withValues(alpha: 0.08),
-              ),
               Padding(
                 padding: EdgeInsets.fromLTRB(8, 8, 8, 8 + bottomPadding),
                 child: Row(
@@ -53,9 +45,9 @@ class MainShell extends ConsumerWidget {
                       onTap: () => context.go('/'),
                     ),
                     _NavItem(
-                      icon: Icons.collections_outlined,
+                      icon: Icons.collections,
                       activeIcon: Icons.collections,
-                      label: 'Gallery',
+                      label: 'Gallerys',
                       isActive: currentIndex == 1,
                       onTap: () => context.go('/vision-board'),
                     ),

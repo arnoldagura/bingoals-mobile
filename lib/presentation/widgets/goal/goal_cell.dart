@@ -58,8 +58,7 @@ class _GoalCellState extends State<GoalCell>
     super.dispose();
   }
 
-  bool get isEmpty =>
-      widget.goalTitle == null || widget.goalTitle!.isEmpty;
+  bool get isEmpty => widget.goalTitle == null || widget.goalTitle!.isEmpty;
 
   @override
   Widget build(BuildContext context) {
@@ -78,10 +77,8 @@ class _GoalCellState extends State<GoalCell>
       },
       child: AnimatedBuilder(
         animation: _scaleAnimation,
-        builder: (context, child) => Transform.scale(
-          scale: _scaleAnimation.value,
-          child: child,
-        ),
+        builder: (context, child) =>
+            Transform.scale(scale: _scaleAnimation.value, child: child),
         child: Container(
           decoration: BoxDecoration(
             color: _backgroundColor(colorScheme),
@@ -113,7 +110,8 @@ class _GoalCellState extends State<GoalCell>
     if (isEmpty) return cs.surfaceContainerHighest;
     switch (widget.status) {
       case GoalStatus.inProgress:
-        return cs.tertiaryContainer;
+        // Subtle primary tint — distinct from not-started without being dark
+        return cs.primary.withValues(alpha: 0.08);
       case GoalStatus.completed:
         if (widget.imageUrl != null && widget.imageUrl!.isNotEmpty) {
           return Colors.transparent;
@@ -158,8 +156,8 @@ class _GoalCellState extends State<GoalCell>
         CachedNetworkImage(
           imageUrl: fullUrl,
           fit: BoxFit.cover,
-          placeholder: (_, __) => Container(color: cs.primaryContainer),
-          errorWidget: (_, __, ___) => Container(
+          placeholder: (_, _) => Container(color: cs.primaryContainer),
+          errorWidget: (_, _, _) => Container(
             color: cs.primaryContainer,
             child: Icon(Icons.check_circle, color: cs.primary, size: 24),
           ),
@@ -261,11 +259,25 @@ class _GoalCellState extends State<GoalCell>
             ),
           ),
         ),
-        Positioned(
-          top: 3,
-          right: 3,
-          child: _buildStatusIndicator(cs),
-        ),
+        Positioned(top: 3, right: 3, child: _buildStatusIndicator(cs)),
+        // Bottom progress strip for in-progress goals
+        if (widget.status == GoalStatus.inProgress)
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: ClipRRect(
+              borderRadius: const BorderRadius.vertical(
+                bottom: Radius.circular(10),
+              ),
+              child: LinearProgressIndicator(
+                value: widget.progress / 100,
+                minHeight: 3,
+                backgroundColor: cs.onSurface.withValues(alpha: 0.08),
+                valueColor: AlwaysStoppedAnimation<Color>(cs.primary),
+              ),
+            ),
+          ),
       ],
     );
   }
@@ -273,16 +285,15 @@ class _GoalCellState extends State<GoalCell>
   Widget _buildStatusIndicator(ColorScheme cs) {
     switch (widget.status) {
       case GoalStatus.inProgress:
-        // Mini circular progress ring
         return SizedBox(
-          width: 18,
-          height: 18,
+          width: 20,
+          height: 20,
           child: CircularProgressIndicator(
             value: widget.progress / 100,
-            strokeWidth: 2.5,
+            strokeWidth: 3,
             strokeCap: StrokeCap.round,
-            backgroundColor: cs.outline.withValues(alpha: 0.15),
-            color: cs.tertiary,
+            backgroundColor: cs.onSurface.withValues(alpha: 0.12),
+            color: cs.primary,
           ),
         );
       case GoalStatus.completed:

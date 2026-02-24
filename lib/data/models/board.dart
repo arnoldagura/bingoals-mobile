@@ -204,6 +204,7 @@ class BoardSummary {
   final int maxMembers;
   final int goalCount;
   final int completedCount;
+  final List<int> completedPositions;
   final int memberCount;
   final List<MemberInfo> members;
   final bool isDefault;
@@ -218,6 +219,7 @@ class BoardSummary {
     this.maxMembers = 5,
     required this.goalCount,
     required this.completedCount,
+    this.completedPositions = const [],
     this.memberCount = 0,
     this.members = const [],
     this.isDefault = false,
@@ -229,6 +231,10 @@ class BoardSummary {
       goalCount > 0 ? ((completedCount / goalCount) * 100).round() : 0;
 
   factory BoardSummary.fromBoard(Board board) {
+    final completedPositions = board.goals
+        .where((g) => g.isCompleted)
+        .map((g) => g.position)
+        .toList();
     return BoardSummary(
       id: board.id,
       title: board.title,
@@ -239,6 +245,7 @@ class BoardSummary {
       maxMembers: board.maxMembers,
       goalCount: board.goalCount,
       completedCount: board.completedCount,
+      completedPositions: completedPositions,
       memberCount: board.members.length,
       members: board.members,
       isDefault: board.isDefault,
@@ -256,6 +263,10 @@ class BoardSummary {
       maxMembers: json['maxMembers'] as int? ?? 5,
       goalCount: json['goalCount'] as int? ?? 0,
       completedCount: json['completedCount'] as int? ?? 0,
+      completedPositions: (json['completedPositions'] as List?)
+              ?.map((e) => e as int)
+              .toList() ??
+          [],
       memberCount: json['memberCount'] as int? ?? 0,
       members: (json['members'] as List?)
               ?.map((m) => MemberInfo.fromJson(m as Map<String, dynamic>))

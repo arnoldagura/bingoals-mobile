@@ -1,3 +1,8 @@
+import 'dart:async';
+import 'dart:convert';
+
+import 'package:flutter/foundation.dart';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -14,16 +19,23 @@ import '../../presentation/screens/onboarding/onboarding_screen.dart';
 class AuthState {
   final User? user;
   final bool isLoading;
+  final bool isInitializing;
   final String? error;
 
-  const AuthState({this.user, this.isLoading = false, this.error});
+  const AuthState({
+    this.user,
+    this.isLoading = false,
+    this.isInitializing = true,
+    this.error,
+  });
 
   bool get isLoggedIn => user != null;
 
-  AuthState copyWith({User? user, bool? isLoading, String? error}) {
+  AuthState copyWith({User? user, bool? isLoading, bool? isInitializing, String? error}) {
     return AuthState(
       user: user ?? this.user,
       isLoading: isLoading ?? this.isLoading,
+      isInitializing: isInitializing ?? this.isInitializing,
       error: error,
     );
   }
@@ -31,27 +43,89 @@ class AuthState {
 
 class AuthNotifier extends StateNotifier<AuthState> {
   final Ref _ref;
+  StreamSubscription? _googleAuthSub;
 
-  AuthNotifier(this._ref) : super(const AuthState());
+  AuthNotifier(this._ref) : super(const AuthState()) {
+    if (kIsWeb) _setupWebGoogleSignIn();
+  }
+
+  void _setupWebGoogleSignIn() {
+    GoogleSignIn.instance.initialize();
+    _googleAuthSub = GoogleSignIn.instance.authenticationEvents.listen(
+      (event) async {
+        if (event is GoogleSignInAuthenticationEventSignIn) {
+          state = state.copyWith(isLoading: true, error: null);
+          try {
+            final idToken = event.user.authentication.idToken;
+            if (idToken == null) {
+              state = AuthState(error: 'Failed to get Google ID token');
+              return;
+            }
+            final authApi = _ref.read(authApiProvider);
+            final response = await authApi.googleLogin(idToken: idToken);
+            await _saveTokenAndSetUser(response.token, response.user);
+          } on DioException catch (e) {
+            state = AuthState(error: _extractError(e));
+          } catch (e) {
+            state = AuthState(error: e.toString());
+          }
+        }
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    _googleAuthSub?.cancel();
+    super.dispose();
+  }
 
   Future<void> tryRestoreSession() async {
     final storage = _ref.read(secureStorageProvider);
     final token = await storage.read(key: ApiConstants.tokenKey);
-    if (token == null) return;
+    if (token == null) {
+      // No token — definitively not logged in, done initializing
+      state = const AuthState(isInitializing: false);
+      return;
+    }
 
-    state = state.copyWith(isLoading: true);
+    // Immediately restore from cached user JSON so the app doesn't log out
+    // when the server is sleeping (Render.com free tier) or there's no network.
+    final cachedUserJson = await storage.read(key: ApiConstants.userKey);
+    if (cachedUserJson != null) {
+      try {
+        final user = User.fromJson(
+            jsonDecode(cachedUserJson) as Map<String, dynamic>);
+        state = AuthState(user: user, isInitializing: false);
+      } catch (_) {
+        // Corrupt cache — treat as not logged in, done initializing
+        state = const AuthState(isInitializing: false);
+      }
+    } else {
+      // Token but no cached user — done initializing, verify in background
+      state = const AuthState(isInitializing: false, isLoading: true);
+    }
+
+    // Verify session in background — only log out on an explicit 401.
     try {
       final authApi = _ref.read(authApiProvider);
       final user = await authApi.getMe();
-      state = AuthState(user: user);
+      await storage.write(
+        key: ApiConstants.userKey,
+        value: jsonEncode(user.toJson()),
+      );
+      state = AuthState(user: user, isInitializing: false);
       _registerDeviceToken();
     } on DioException catch (e) {
       if (e.response?.statusCode == 401) {
+        // Token explicitly rejected — clear everything.
         await storage.delete(key: ApiConstants.tokenKey);
+        await storage.delete(key: ApiConstants.userKey);
+        state = const AuthState(isInitializing: false);
       }
-      state = const AuthState();
+      // Network errors / timeouts / server sleeping → keep the cached user.
     } catch (_) {
-      state = const AuthState();
+      // Unexpected errors → keep the cached user.
     }
   }
 
@@ -95,6 +169,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<bool> loginWithGoogle() async {
+    if (kIsWeb) return false; // Web uses renderButton + authenticationEvents
     state = state.copyWith(error: null);
     try {
       final googleSignIn = GoogleSignIn.instance;
@@ -118,7 +193,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       state = AuthState(error: message);
       return false;
     } catch (e) {
-      state = AuthState(error: 'Google sign-in failed');
+      state = AuthState(error: e.toString());
       return false;
     }
   }
@@ -127,9 +202,13 @@ class AuthNotifier extends StateNotifier<AuthState> {
     try {
       final authApi = _ref.read(authApiProvider);
       final user = await authApi.getMe();
+      final storage = _ref.read(secureStorageProvider);
+      await storage.write(
+        key: ApiConstants.userKey,
+        value: jsonEncode(user.toJson()),
+      );
       state = AuthState(user: user);
-    } catch (_) {
-    }
+    } catch (_) {}
   }
 
   Future<bool> updateProfile({
@@ -146,6 +225,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
         avatarUrl: avatarUrl,
         bio: bio,
       );
+      final storage = _ref.read(secureStorageProvider);
+      await storage.write(
+        key: ApiConstants.userKey,
+        value: jsonEncode(user.toJson()),
+      );
       state = AuthState(user: user);
       return true;
     } catch (_) {
@@ -154,9 +238,14 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> logout() async {
-    PushService.instance.setTokenRefreshCallback(null);
+    try {
+      PushService.instance.setTokenRefreshCallback(null);
+    } catch (_) {
+      // Firebase may not be initialized — safe to ignore.
+    }
     final storage = _ref.read(secureStorageProvider);
     await storage.delete(key: ApiConstants.tokenKey);
+    await storage.delete(key: ApiConstants.userKey);
     _ref.invalidate(boardSummariesProvider);
     _ref.invalidate(onboardingCompletedProvider);
     state = const AuthState();
@@ -165,6 +254,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<void> _saveTokenAndSetUser(String token, User user) async {
     final storage = _ref.read(secureStorageProvider);
     await storage.write(key: ApiConstants.tokenKey, value: token);
+    await storage.write(
+      key: ApiConstants.userKey,
+      value: jsonEncode(user.toJson()),
+    );
     state = AuthState(user: user);
     _registerDeviceToken();
   }

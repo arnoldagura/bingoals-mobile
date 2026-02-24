@@ -42,7 +42,11 @@ class GoalGrid extends StatelessWidget {
                       status: goal.status,
                       progress: goal.progress,
                       icon: goal.icon,
-                      imageUrl: goal.imageUrl,
+                      imageUrl: goal.memories
+                              .where((m) => m.isBoardImage)
+                              .firstOrNull
+                              ?.imageUrl ??
+                          goal.imageUrl,
                       onTap: onCellTap != null
                           ? () => onCellTap!(index)
                           : null,

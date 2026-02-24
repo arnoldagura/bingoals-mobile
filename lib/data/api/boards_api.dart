@@ -7,6 +7,8 @@ import '../models/board_invite.dart';
 import '../models/activity.dart';
 import '../models/reaction.dart';
 import '../models/comment.dart';
+import '../models/goal_memory.dart';
+import '../models/journal_entry.dart';
 import '../models/mini_goal.dart';
 import '../models/reflection.dart';
 import 'api_client.dart';
@@ -106,11 +108,13 @@ class BoardsApi {
     String boardId,
     int position, {
     required String title,
-    required int percentage,
+    int? percentage,
   }) async {
+    final body = <String, dynamic>{'title': title};
+    if (percentage != null) body['percentage'] = percentage;
     final response = await _dio.post(
       ApiConstants.miniGoals(boardId, position),
-      data: {'title': title, 'percentage': percentage},
+      data: body,
     );
     return MiniGoal.fromJson(response.data);
   }
@@ -233,6 +237,52 @@ class BoardsApi {
     return MiniGoal.fromJson(response.data);
   }
 
+  // --- Goal memories ---
+
+  Future<GoalMemory> createGoalMemory(
+    String boardId,
+    int position,
+    String imageUrl, {
+    String label = '',
+  }) async {
+    final response = await _dio.post(
+      ApiConstants.goalMemories(boardId, position),
+      data: {'imageUrl': imageUrl, 'label': label},
+    );
+    return GoalMemory.fromJson(response.data as Map<String, dynamic>);
+  }
+
+  Future<List<GoalMemory>> listGoalMemories(
+      String boardId, int position) async {
+    final response =
+        await _dio.get(ApiConstants.goalMemories(boardId, position));
+    return (response.data as List)
+        .map((m) => GoalMemory.fromJson(m as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<GoalMemory> updateGoalMemory(
+    String boardId,
+    int position,
+    String memoryId, {
+    String? label,
+    bool? isBoardImage,
+  }) async {
+    final response = await _dio.patch(
+      ApiConstants.goalMemory(boardId, position, memoryId),
+      data: {
+        'label': ?label,
+        'isBoardImage': ?isBoardImage,
+      },
+    );
+    return GoalMemory.fromJson(response.data as Map<String, dynamic>);
+  }
+
+  Future<void> deleteGoalMemory(
+      String boardId, int position, String memoryId) async {
+    await _dio.delete(ApiConstants.goalMemory(boardId, position, memoryId));
+  }
+
   /// Fetch all milestone memories across all user boards
   Future<List<Map<String, dynamic>>> getGallery() async {
     final response = await _dio.get(ApiConstants.gallery);
@@ -320,5 +370,13 @@ class BoardsApi {
   /// Delete a comment
   Future<void> deleteComment(String goalId, String commentId) async {
     await _dio.delete(ApiConstants.deleteComment(goalId, commentId));
+  }
+
+  /// Get the user's journal timeline (completed goals, milestones, reflections)
+  Future<List<JournalEntry>> getJournal() async {
+    final response = await _dio.get(ApiConstants.journal);
+    return (response.data as List)
+        .map((j) => JournalEntry.fromJson(j as Map<String, dynamic>))
+        .toList();
   }
 }

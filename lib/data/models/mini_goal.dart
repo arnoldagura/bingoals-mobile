@@ -2,7 +2,7 @@ class MiniGoal {
   final String id;
   final String goalId;
   final String title;
-  final int percentage;
+  final int? percentage;
   final bool isComplete;
   final String? imageUrl;
 
@@ -10,7 +10,7 @@ class MiniGoal {
     required this.id,
     required this.goalId,
     required this.title,
-    required this.percentage,
+    this.percentage,
     this.isComplete = false,
     this.imageUrl,
   });
@@ -38,7 +38,7 @@ class MiniGoal {
       'id': id,
       'goalId': goalId,
       'title': title,
-      'percentage': percentage,
+      if (percentage != null) 'percentage': percentage,
       'isComplete': isComplete,
       'imageUrl': imageUrl,
     };
@@ -49,7 +49,7 @@ class MiniGoal {
       id: json['id'] as String,
       goalId: json['goalId'] as String,
       title: json['title'] as String,
-      percentage: json['percentage'] as int,
+      percentage: json['percentage'] as int?,
       isComplete: json['isComplete'] as bool? ?? false,
       imageUrl: json['imageUrl'] as String?,
     );

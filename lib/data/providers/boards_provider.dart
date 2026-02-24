@@ -12,8 +12,10 @@ final boardSummariesProvider = FutureProvider<List<BoardSummary>>((ref) async {
   return api.getBoards();
 });
 
-final boardDetailProvider =
-    FutureProvider.family<Board, String>((ref, boardId) async {
+final boardDetailProvider = FutureProvider.family<Board, String>((
+  ref,
+  boardId,
+) async {
   final api = ref.watch(boardsApiProvider);
   return api.getBoard(boardId);
 });
@@ -31,10 +33,11 @@ final dashboardStatsProvider = Provider<DashboardStats>((ref) {
   final authState = ref.watch(authProvider);
   return summariesAsync.when(
     data: (summaries) {
-      final totalGoals =
-          summaries.fold<int>(0, (sum, b) => sum + b.goalCount);
-      final completedGoals =
-          summaries.fold<int>(0, (sum, b) => sum + b.completedCount);
+      final totalGoals = summaries.fold<int>(0, (sum, b) => sum + b.goalCount);
+      final completedGoals = summaries.fold<int>(
+        0,
+        (sum, b) => sum + b.completedCount,
+      );
       return DashboardStats(
         totalGoals: totalGoals,
         completedGoals: completedGoals,
@@ -49,7 +52,7 @@ final dashboardStatsProvider = Provider<DashboardStats>((ref) {
       );
     },
     loading: () => DashboardStats.empty(),
-    error: (_, __) => DashboardStats.empty(),
+    error: (_, _) => DashboardStats.empty(),
   );
 });
 
@@ -98,7 +101,10 @@ class BoardActions {
   }
 
   Future<void> updateGoalTitle(
-      String boardId, int position, String title) async {
+    String boardId,
+    int position,
+    String title,
+  ) async {
     await _api.updateGoal(boardId, position, title: title);
     _ref.invalidate(boardDetailProvider(boardId));
     _ref.invalidate(boardSummariesProvider);
@@ -111,7 +117,9 @@ class BoardActions {
   }
 
   Future<Map<String, dynamic>> toggleGoalCompletion(
-      String boardId, int position) async {
+    String boardId,
+    int position,
+  ) async {
     final result = await _api.toggleGoal(boardId, position);
     _ref.invalidate(boardDetailProvider(boardId));
     _ref.invalidate(boardSummariesProvider);
@@ -123,16 +131,23 @@ class BoardActions {
     String boardId,
     int position, {
     required String title,
-    required int percentage,
+    int? percentage,
   }) async {
-    await _api.createMiniGoal(boardId, position,
-        title: title, percentage: percentage);
+    await _api.createMiniGoal(
+      boardId,
+      position,
+      title: title,
+      percentage: percentage,
+    );
     _ref.invalidate(boardDetailProvider(boardId));
     _ref.invalidate(boardSummariesProvider);
   }
 
   Future<void> toggleMiniGoal(
-      String boardId, int position, String miniGoalId) async {
+    String boardId,
+    int position,
+    String miniGoalId,
+  ) async {
     await _api.toggleMiniGoal(boardId, position, miniGoalId);
     _ref.invalidate(boardDetailProvider(boardId));
     _ref.invalidate(boardSummariesProvider);
@@ -145,14 +160,22 @@ class BoardActions {
     String? title,
     int? percentage,
   }) async {
-    await _api.updateMiniGoal(boardId, position, miniGoalId,
-        title: title, percentage: percentage);
+    await _api.updateMiniGoal(
+      boardId,
+      position,
+      miniGoalId,
+      title: title,
+      percentage: percentage,
+    );
     _ref.invalidate(boardDetailProvider(boardId));
     _ref.invalidate(boardSummariesProvider);
   }
 
   Future<void> deleteMiniGoal(
-      String boardId, int position, String miniGoalId) async {
+    String boardId,
+    int position,
+    String miniGoalId,
+  ) async {
     await _api.deleteMiniGoal(boardId, position, miniGoalId);
     _ref.invalidate(boardDetailProvider(boardId));
     _ref.invalidate(boardSummariesProvider);
@@ -164,7 +187,12 @@ class BoardActions {
     String? icon,
     String? imageUrl,
   }) async {
-    await _api.updateGoalIcon(boardId, position, icon: icon, imageUrl: imageUrl);
+    await _api.updateGoalIcon(
+      boardId,
+      position,
+      icon: icon,
+      imageUrl: imageUrl,
+    );
     _ref.invalidate(boardDetailProvider(boardId));
   }
 
@@ -176,6 +204,7 @@ class BoardActions {
     final url = await _api.uploadImage(filePath);
     await _api.updateGoalIcon(boardId, position, imageUrl: url);
     _ref.invalidate(boardDetailProvider(boardId));
+    _ref.invalidate(galleryProvider);
     return url;
   }
 
@@ -200,6 +229,41 @@ class BoardActions {
 
   Future<String> uploadImage(String filePath) => _api.uploadImage(filePath);
 
+  // --- Goal memories ---
+
+  Future<void> addGoalMemory(
+    String boardId,
+    int position,
+    String filePath, {
+    String label = '',
+  }) async {
+    final url = await _api.uploadImage(filePath);
+    await _api.createGoalMemory(boardId, position, url, label: label);
+    _ref.invalidate(boardDetailProvider(boardId));
+    _ref.invalidate(galleryProvider);
+  }
+
+  Future<void> deleteGoalMemory(
+      String boardId, int position, String memoryId) async {
+    await _api.deleteGoalMemory(boardId, position, memoryId);
+    _ref.invalidate(boardDetailProvider(boardId));
+    _ref.invalidate(galleryProvider);
+  }
+
+  Future<void> setGoalBoardImage(
+      String boardId, int position, String memoryId) async {
+    await _api.updateGoalMemory(boardId, position, memoryId,
+        isBoardImage: true);
+    _ref.invalidate(boardDetailProvider(boardId));
+  }
+
+  Future<void> updateGoalMemoryLabel(
+      String boardId, int position, String memoryId, String label) async {
+    await _api.updateGoalMemory(boardId, position, memoryId, label: label);
+    _ref.invalidate(boardDetailProvider(boardId));
+    _ref.invalidate(galleryProvider);
+  }
+
   Future<void> updateGoalMood(
     String boardId,
     int position,
@@ -217,6 +281,7 @@ class BoardActions {
   ) async {
     await _api.updateMilestoneImage(boardId, position, miniGoalId, imageUrl);
     _ref.invalidate(boardDetailProvider(boardId));
+    _ref.invalidate(galleryProvider);
   }
 
   // --- Shared board actions ---

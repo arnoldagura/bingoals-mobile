@@ -1,3 +1,4 @@
+import 'goal_memory.dart';
 import 'mini_goal.dart';
 import 'reflection.dart';
 
@@ -41,6 +42,7 @@ class Goal {
   final String? completedBy;
   final int position;
   final List<MiniGoal> miniGoals;
+  final List<GoalMemory> memories;
   final Reflection? reflection;
   final int completedByCount; // How many members completed this (shared boards only)
 
@@ -60,6 +62,7 @@ class Goal {
     this.completedBy,
     required this.position,
     this.miniGoals = const [],
+    this.memories = const [],
     this.reflection,
     this.completedByCount = 0,
   });
@@ -84,6 +87,7 @@ class Goal {
     String? completedBy,
     int? position,
     List<MiniGoal>? miniGoals,
+    List<GoalMemory>? memories,
     Reflection? reflection,
     int? completedByCount,
   }) {
@@ -103,6 +107,7 @@ class Goal {
       completedBy: completedBy ?? this.completedBy,
       position: position ?? this.position,
       miniGoals: miniGoals ?? this.miniGoals,
+      memories: memories ?? this.memories,
       reflection: reflection ?? this.reflection,
       completedByCount: completedByCount ?? this.completedByCount,
     );
@@ -132,6 +137,7 @@ class Goal {
       'completedBy': completedBy,
       'position': position,
       'miniGoals': miniGoals.map((mg) => mg.toJson()).toList(),
+      'memories': memories.map((m) => m.toJson()).toList(),
       'reflection': reflection?.toJson(),
     };
   }
@@ -157,6 +163,11 @@ class Goal {
       miniGoals: json['miniGoals'] != null
           ? (json['miniGoals'] as List)
               .map((mg) => MiniGoal.fromJson(mg as Map<String, dynamic>))
+              .toList()
+          : [],
+      memories: json['memories'] != null
+          ? (json['memories'] as List)
+              .map((m) => GoalMemory.fromJson(m as Map<String, dynamic>))
               .toList()
           : [],
       reflection: json['reflection'] != null

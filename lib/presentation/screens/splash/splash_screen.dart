@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -21,8 +22,11 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   }
 
   Future<void> _checkAuth() async {
-    // Small delay for splash animation
-    await Future.delayed(const Duration(milliseconds: 1500));
+    // Skip delay on web — auth restores from cache instantly and the user
+    // shouldn't have to wait 1.5s on every page refresh.
+    if (!kIsWeb) {
+      await Future.delayed(const Duration(milliseconds: 1500));
+    }
     if (!mounted) return;
     // This triggers router redirect via auth state change
     await ref.read(authProvider.notifier).tryRestoreSession();

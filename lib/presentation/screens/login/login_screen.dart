@@ -1,7 +1,10 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
+import '../../../platform/google_button.dart';
 
 import '../../../core/theme/typography.dart';
 import '../../../data/providers/auth_provider.dart';
@@ -33,7 +36,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
 
-    await ref.read(authProvider.notifier).login(
+    await ref
+        .read(authProvider.notifier)
+        .login(
           email: _emailController.text.trim(),
           password: _passwordController.text,
         );
@@ -62,26 +67,32 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 const SizedBox(height: 60),
                 // Logo
                 Center(
-                  child: Container(
-                    width: 100,
-                    height: 100,
-                    decoration: BoxDecoration(
-                      color: colorScheme.primary.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: colorScheme.primary.withValues(alpha: 0.3),
-                        width: 2,
-                      ),
-                    ),
-                    child: Icon(
-                      Icons.grid_view_rounded,
-                      size: 48,
-                      color: colorScheme.primary,
-                    ),
-                  ).animate().fadeIn(duration: 600.ms).scale(
-                        begin: const Offset(0.8, 0.8),
-                        end: const Offset(1, 1),
-                      ),
+                  child:
+                      Container(
+                            width: 100,
+                            height: 100,
+                            decoration: BoxDecoration(
+                              color: colorScheme.primary.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: colorScheme.primary.withValues(
+                                  alpha: 0.3,
+                                ),
+                                width: 2,
+                              ),
+                            ),
+                            child: Icon(
+                              Icons.grid_view_rounded,
+                              size: 48,
+                              color: colorScheme.primary,
+                            ),
+                          )
+                          .animate()
+                          .fadeIn(duration: 600.ms)
+                          .scale(
+                            begin: const Offset(0.8, 0.8),
+                            end: const Offset(1, 1),
+                          ),
                 ),
                 const SizedBox(height: 24),
                 Text(
@@ -196,28 +207,35 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 const SizedBox(height: 20),
 
                 // Google Sign-In button
-                SizedBox(
-                  height: 50,
-                  child: OutlinedButton.icon(
-                    onPressed: authState.isLoading ? null : _loginWithGoogle,
-                    icon: Image.network(
-                      'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg',
-                      height: 20,
-                      width: 20,
-                      errorBuilder: (_, __, ___) =>
-                          const Icon(Icons.g_mobiledata, size: 24),
-                    ),
-                    label: const Text('Sign in with Google'),
-                    style: OutlinedButton.styleFrom(
-                      side: BorderSide(
-                        color: colorScheme.onSurface.withValues(alpha: 0.15),
+                // Web: use Google's official renderButton (required by GIS)
+                // Native: use custom styled button
+                if (kIsWeb)
+                  Center(
+                    child: buildGoogleWebButton(),
+                  ).animate(delay: 700.ms).fadeIn()
+                else
+                  SizedBox(
+                    height: 50,
+                    child: OutlinedButton.icon(
+                      onPressed: authState.isLoading ? null : _loginWithGoogle,
+                      icon: Image.network(
+                        'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg',
+                        height: 20,
+                        width: 20,
+                        errorBuilder: (_, _, _) =>
+                            const Icon(Icons.g_mobiledata, size: 24),
                       ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
+                      label: const Text('Sign in with Google'),
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(
+                          color: colorScheme.onSurface.withValues(alpha: 0.15),
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
                       ),
                     ),
-                  ),
-                ).animate(delay: 700.ms).fadeIn(),
+                  ).animate(delay: 700.ms).fadeIn(),
                 const SizedBox(height: 16),
 
                 // Register link
