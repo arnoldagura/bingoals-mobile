@@ -207,7 +207,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         key: ApiConstants.userKey,
         value: jsonEncode(user.toJson()),
       );
-      state = AuthState(user: user);
+      state = state.copyWith(user: user);
     } catch (_) {}
   }
 

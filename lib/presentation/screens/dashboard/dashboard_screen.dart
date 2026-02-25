@@ -61,26 +61,36 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     _boardType = 'personal';
     _maxMembers = 5;
 
+    var step2 = false;
+
     showStyledBottomSheet(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) {
           final cs = Theme.of(context).colorScheme;
-          return StyledBottomSheetContent(
-            title: 'New Board',
-            showClose: true,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // ── Quick start ─────────────────────────────────────────
-                  _sectionLabel(cs, 'Quick start'),
-                  SizedBox(
-                    height: 80,
-                    child: ListView(
-                      scrollDirection: Axis.horizontal,
-                      children: BoardPreset.all.map((preset) {
+
+          // ── Step 1: Choose a template ──────────────────────────────
+          if (!step2) {
+            return StyledBottomSheetContent(
+              title: 'Choose a template',
+              showClose: true,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        mainAxisSpacing: 10,
+                        crossAxisSpacing: 10,
+                        childAspectRatio: 1.6,
+                      ),
+                      itemCount: BoardPreset.all.length,
+                      itemBuilder: (_, i) {
+                        final preset = BoardPreset.all[i];
                         return GestureDetector(
                           onTap: () => setDialogState(() {
                             _newBoardController.text = preset.suggestedTitle;
@@ -88,49 +98,144 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                             _boardType = preset.boardType;
                             _maxMembers = preset.maxMembers;
                             _selectedGridSize = preset.gridSize;
+                            step2 = true;
                           }),
                           child: Container(
-                            width: 120,
-                            margin: const EdgeInsets.only(right: 8),
-                            padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+                            padding: const EdgeInsets.all(14),
                             decoration: BoxDecoration(
                               color: preset.color.withValues(alpha: 0.08),
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(14),
                               border: Border.all(
                                 color: preset.color.withValues(alpha: 0.25),
                               ),
                             ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment:
+                                  MainAxisAlignment.spaceBetween,
                               children: [
-                                Icon(preset.icon, color: preset.color, size: 18),
-                                const Spacer(),
-                                Text(
-                                  preset.label,
-                                  style: AppTypography.labelMedium.copyWith(
-                                    color: cs.onSurface,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                                Icon(
+                                  preset.icon,
+                                  color: preset.color,
+                                  size: 22,
                                 ),
-                                const SizedBox(height: 1),
-                                Text(
-                                  '${preset.gridSize}×${preset.gridSize} · ${preset.boardType == 'shared' ? 'Shared' : 'Personal'}',
-                                  style: AppTypography.caption.copyWith(
-                                    color: cs.onSurface.withValues(alpha: 0.4),
-                                    fontSize: 10,
-                                  ),
+                                Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      preset.label,
+                                      style:
+                                          AppTypography.labelMedium.copyWith(
+                                        color: cs.onSurface,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    Text(
+                                      '${preset.gridSize}×${preset.gridSize} · ${preset.boardType == 'shared' ? 'Shared' : 'Personal'}',
+                                      style: AppTypography.caption.copyWith(
+                                        color: cs.onSurface
+                                            .withValues(alpha: 0.4),
+                                        fontSize: 10,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),
                           ),
                         );
-                      }).toList(),
+                      },
                     ),
+                    const SizedBox(height: 10),
+                    // Start from scratch
+                    GestureDetector(
+                      onTap: () => setDialogState(() {
+                        _newBoardController.clear();
+                        _selectedCategory = null;
+                        _boardType = 'personal';
+                        _maxMembers = 5;
+                        _selectedGridSize = 5;
+                        step2 = true;
+                      }),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 14,
+                          horizontal: 16,
+                        ),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: cs.onSurface.withValues(alpha: 0.15),
+                          ),
+                          color: cs.onSurface.withValues(alpha: 0.03),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.add,
+                              size: 18,
+                              color: cs.onSurface.withValues(alpha: 0.5),
+                            ),
+                            const SizedBox(width: 10),
+                            Text(
+                              'Start from scratch',
+                              style: AppTypography.bodyMedium.copyWith(
+                                color: cs.onSurface.withValues(alpha: 0.6),
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+
+          // ── Step 2: Customize ──────────────────────────────────────
+          return StyledBottomSheetContent(
+            showDragHandle: true,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Back + title row
+                  Row(
+                    children: [
+                      GestureDetector(
+                        onTap: () => setDialogState(() => step2 = false),
+                        child: Icon(
+                          Icons.arrow_back_ios_new_rounded,
+                          size: 18,
+                          color: cs.onSurface.withValues(alpha: 0.6),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'New Board',
+                          style: AppTypography.headlineSmall.copyWith(
+                            color: cs.onSurface,
+                          ),
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () => Navigator.pop(context),
+                        child: Icon(
+                          Icons.close_rounded,
+                          color: cs.onSurface.withValues(alpha: 0.4),
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 20),
 
-                  // ── Board name ──────────────────────────────────────────
+                  // ── Board name ──
                   StyledTextField(
                     controller: _newBoardController,
                     autofocus: true,
@@ -147,13 +252,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                       padding: const EdgeInsets.only(top: 6, left: 4),
                       child: Text(
                         _nameErrorText!,
-                        style:
-                            TextStyle(color: cs.error, fontSize: 12),
+                        style: TextStyle(color: cs.error, fontSize: 12),
                       ),
                     ),
                   const SizedBox(height: 20),
 
-                  // ── Category ────────────────────────────────────────────
+                  // ── Category ──
                   _sectionLabel(cs, 'Category'),
                   GridView.count(
                     crossAxisCount: 4,
@@ -216,7 +320,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                   ),
                   const SizedBox(height: 20),
 
-                  // ── Grid size ───────────────────────────────────────────
+                  // ── Grid size ──
                   _sectionLabel(cs, 'Grid size'),
                   Row(
                     children: [3, 5, 7].map((size) {
@@ -233,8 +337,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                                 () => _selectedGridSize = size),
                             child: AnimatedContainer(
                               duration: const Duration(milliseconds: 150),
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 14),
+                              padding: const EdgeInsets.symmetric(
+                                  vertical: 14),
                               decoration: BoxDecoration(
                                 color: isSelected
                                     ? cs.primary
@@ -243,7 +347,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                                 border: Border.all(
                                   color: isSelected
                                       ? cs.primary
-                                      : cs.onSurface.withValues(alpha: 0.12),
+                                      : cs.onSurface
+                                          .withValues(alpha: 0.12),
                                 ),
                               ),
                               child: Column(
@@ -255,7 +360,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                                   const SizedBox(height: 8),
                                   Text(
                                     '$size×$size',
-                                    style: AppTypography.labelLarge.copyWith(
+                                    style:
+                                        AppTypography.labelLarge.copyWith(
                                       color: isSelected
                                           ? cs.onPrimary
                                           : cs.onSurface,
@@ -268,8 +374,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                                     '${size * size} goals',
                                     style: AppTypography.caption.copyWith(
                                       color: isSelected
-                                          ? cs.onPrimary.withValues(alpha: 0.6)
-                                          : cs.onSurface.withValues(alpha: 0.45),
+                                          ? cs.onPrimary
+                                              .withValues(alpha: 0.6)
+                                          : cs.onSurface
+                                              .withValues(alpha: 0.45),
                                       fontSize: 10,
                                     ),
                                   ),
@@ -283,7 +391,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                   ),
                   const SizedBox(height: 20),
 
-                  // ── Board type ──────────────────────────────────────────
+                  // ── Board type ──
                   _sectionLabel(cs, 'Board type'),
                   Row(
                     children: [
@@ -311,7 +419,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                     ],
                   ),
 
-                  // ── Max members (shared only) ───────────────────────────
+                  // ── Max members (shared only) ──
                   if (_boardType == 'shared') ...[
                     const SizedBox(height: 14),
                     Row(

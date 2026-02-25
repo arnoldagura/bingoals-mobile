@@ -66,10 +66,8 @@ class _BoardCardState extends State<BoardCard>
 
     return AnimatedBuilder(
       animation: _scaleAnimation,
-      builder: (context, child) => Transform.scale(
-        scale: _scaleAnimation.value,
-        child: child,
-      ),
+      builder: (context, child) =>
+          Transform.scale(scale: _scaleAnimation.value, child: child),
       child: GestureDetector(
         onTap: () {
           _scaleController.forward().then((_) {
@@ -144,8 +142,9 @@ class _BoardCardState extends State<BoardCard>
                                       icon: Icon(
                                         Icons.more_horiz,
                                         size: 18,
-                                        color: colorScheme.onSurface
-                                            .withValues(alpha: 0.4),
+                                        color: colorScheme.onSurface.withValues(
+                                          alpha: 0.4,
+                                        ),
                                       ),
                                       padding: EdgeInsets.zero,
                                       onSelected: (value) {
@@ -166,8 +165,10 @@ class _BoardCardState extends State<BoardCard>
                                           value: 'rename',
                                           child: Row(
                                             children: [
-                                              Icon(Icons.edit_outlined,
-                                                  size: 18),
+                                              Icon(
+                                                Icons.edit_outlined,
+                                                size: 18,
+                                              ),
                                               SizedBox(width: 8),
                                               Text('Rename'),
                                             ],
@@ -178,8 +179,10 @@ class _BoardCardState extends State<BoardCard>
                                             value: 'default',
                                             child: Row(
                                               children: [
-                                                Icon(Icons.star_outline,
-                                                    size: 18),
+                                                Icon(
+                                                  Icons.star_outline,
+                                                  size: 18,
+                                                ),
                                                 SizedBox(width: 8),
                                                 Text('Set as default'),
                                               ],
@@ -189,16 +192,17 @@ class _BoardCardState extends State<BoardCard>
                                           value: 'delete',
                                           child: Row(
                                             children: [
-                                              Icon(Icons.delete_outline,
-                                                  size: 18,
-                                                  color:
-                                                      colorScheme.error),
+                                              Icon(
+                                                Icons.delete_outline,
+                                                size: 18,
+                                                color: colorScheme.error,
+                                              ),
                                               const SizedBox(width: 8),
                                               Text(
                                                 'Delete',
                                                 style: TextStyle(
-                                                    color:
-                                                        colorScheme.error),
+                                                  color: colorScheme.error,
+                                                ),
                                               ),
                                             ],
                                           ),
@@ -214,17 +218,18 @@ class _BoardCardState extends State<BoardCard>
                                 '${board.year}',
                                 style: TextStyle(
                                   fontSize: 12,
-                                  color: colorScheme.onSurface
-                                      .withValues(alpha: 0.45),
+                                  color: colorScheme.onSurface.withValues(
+                                    alpha: 0.45,
+                                  ),
                                   fontWeight: FontWeight.w500,
                                   letterSpacing: 0.5,
                                 ),
                               ),
                               const Spacer(),
-                              // Bottom badges row
-                              Row(
+                              Wrap(
+                                spacing: 6,
+                                runSpacing: 4,
                                 children: [
-                                  // Solo / Shared badge
                                   _Badge(
                                     label: board.isShared
                                         ? 'Shared · ${board.memberCount}'
@@ -234,13 +239,32 @@ class _BoardCardState extends State<BoardCard>
                                         : Icons.person_outline,
                                     color: accent,
                                   ),
+                                  if (board.goalCount > board.completedCount &&
+                                      board.goalCount > 0)
+                                    _Badge(
+                                      label:
+                                          '${board.goalCount - board.completedCount} remaining',
+                                      icon: Icons.pending_outlined,
+                                      color: colorScheme.onSurface.withValues(
+                                        alpha: 0.45,
+                                      ),
+                                    ),
+                                  if (board.gridSize * board.gridSize >
+                                      board.goalCount)
+                                    _Badge(
+                                      label:
+                                          '${board.gridSize * board.gridSize - board.goalCount} unassigned',
+                                      icon: Icons.grid_4x4_outlined,
+                                      color: colorScheme.onSurface.withValues(
+                                        alpha: 0.35,
+                                      ),
+                                    ),
                                 ],
                               ),
                             ],
                           ),
                         ),
                         const SizedBox(width: 12),
-                        // Right: progress ring + dot grid
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
@@ -274,11 +298,7 @@ class _Badge extends StatelessWidget {
   final IconData icon;
   final Color color;
 
-  const _Badge({
-    required this.label,
-    required this.icon,
-    required this.color,
-  });
+  const _Badge({required this.label, required this.icon, required this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -312,10 +332,7 @@ class _CompactProgressRing extends StatelessWidget {
   final int progress;
   final Color color;
 
-  const _CompactProgressRing({
-    required this.progress,
-    required this.color,
-  });
+  const _CompactProgressRing({required this.progress, required this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -358,10 +375,36 @@ class _MiniGridPreview extends StatelessWidget {
     required this.accentColor,
   });
 
+  /// Returns positions that are part of at least one completed bingo line.
+  Set<int> _bingoPositions(Set<int> completed) {
+    final bingo = <int>{};
+    // Rows
+    for (int r = 0; r < gridSize; r++) {
+      final row = List.generate(gridSize, (c) => r * gridSize + c);
+      if (row.every(completed.contains)) bingo.addAll(row);
+    }
+    // Columns
+    for (int c = 0; c < gridSize; c++) {
+      final col = List.generate(gridSize, (r) => r * gridSize + c);
+      if (col.every(completed.contains)) bingo.addAll(col);
+    }
+    // Main diagonal
+    final main = List.generate(gridSize, (i) => i * gridSize + i);
+    if (main.every(completed.contains)) bingo.addAll(main);
+    // Anti-diagonal
+    final anti = List.generate(
+      gridSize,
+      (i) => i * gridSize + (gridSize - 1 - i),
+    );
+    if (anti.every(completed.contains)) bingo.addAll(anti);
+    return bingo;
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final completedSet = completedPositions.toSet();
+    final bingoSet = _bingoPositions(completedSet);
     // Cap display at 5x5 to keep it compact regardless of grid size
     final displaySize = gridSize > 5 ? 5 : gridSize;
 
@@ -380,31 +423,42 @@ class _MiniGridPreview extends StatelessWidget {
           // Map display index back to actual board position
           final displayRow = displayIndex ~/ displaySize;
           final displayCol = displayIndex % displaySize;
-          final actualRow =
-              gridSize > 5 ? (displayRow * gridSize ~/ displaySize) : displayRow;
-          final actualCol =
-              gridSize > 5 ? (displayCol * gridSize ~/ displaySize) : displayCol;
+          final actualRow = gridSize > 5
+              ? (displayRow * gridSize ~/ displaySize)
+              : displayRow;
+          final actualCol = gridSize > 5
+              ? (displayCol * gridSize ~/ displaySize)
+              : displayCol;
           final actualIndex = actualRow * gridSize + actualCol;
 
-          // Check if this cell or any "covered" cells are completed
+          // Check completion and bingo membership
           bool isCompleted = false;
+          bool isBingo = false;
           if (gridSize > 5) {
-            // For 7x7, each display cell covers ~1.4 actual cells — mark if any covered
             final rowStep = gridSize ~/ displaySize;
             final colStep = gridSize ~/ displaySize;
             outer:
-            for (int r = actualRow; r < actualRow + rowStep && r < gridSize; r++) {
-              for (int c = actualCol;
-                  c < actualCol + colStep && c < gridSize;
-                  c++) {
-                if (completedSet.contains(r * gridSize + c)) {
+            for (
+              int r = actualRow;
+              r < actualRow + rowStep && r < gridSize;
+              r++
+            ) {
+              for (
+                int c = actualCol;
+                c < actualCol + colStep && c < gridSize;
+                c++
+              ) {
+                final pos = r * gridSize + c;
+                if (completedSet.contains(pos)) {
                   isCompleted = true;
+                  if (bingoSet.contains(pos)) isBingo = true;
                   break outer;
                 }
               }
             }
           } else {
             isCompleted = completedSet.contains(actualIndex);
+            isBingo = bingoSet.contains(actualIndex);
           }
 
           return Container(
@@ -412,11 +466,21 @@ class _MiniGridPreview extends StatelessWidget {
               borderRadius: BorderRadius.circular(2),
               color: isCompleted
                   ? (isDark
-                      ? accentColor.withValues(alpha: 0.85)
-                      : Colors.black87)
+                        ? accentColor.withValues(alpha: 0.85)
+                        : Colors.black87)
                   : (isDark
-                      ? Colors.white.withValues(alpha: 0.08)
-                      : Colors.black.withValues(alpha: 0.08)),
+                        ? Colors.white.withValues(alpha: 0.08)
+                        : Colors.black.withValues(alpha: 0.08)),
+              border: isBingo ? Border.all(color: accentColor, width: 1) : null,
+              boxShadow: isBingo
+                  ? [
+                      BoxShadow(
+                        color: accentColor.withValues(alpha: 0.6),
+                        blurRadius: 4,
+                        spreadRadius: 0.5,
+                      ),
+                    ]
+                  : null,
             ),
           );
         },

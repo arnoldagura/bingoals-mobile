@@ -47,6 +47,7 @@ class GoalGrid extends StatelessWidget {
                               .firstOrNull
                               ?.imageUrl ??
                           goal.imageUrl,
+                      commentCount: goal.commentCount,
                       onTap: onCellTap != null
                           ? () => onCellTap!(index)
                           : null,

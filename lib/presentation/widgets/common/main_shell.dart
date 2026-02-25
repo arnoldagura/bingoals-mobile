@@ -29,9 +29,15 @@ class MainShell extends ConsumerWidget {
       children: [
         Expanded(child: child),
         Container(
+          color: colorScheme.surface,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              Divider(
+                height: 1,
+                thickness: 1,
+                color: colorScheme.onSurface.withValues(alpha: 0.08),
+              ),
               Padding(
                 padding: EdgeInsets.fromLTRB(8, 8, 8, 8 + bottomPadding),
                 child: Row(
@@ -45,9 +51,9 @@ class MainShell extends ConsumerWidget {
                       onTap: () => context.go('/'),
                     ),
                     _NavItem(
-                      icon: Icons.collections,
+                      icon: Icons.collections_outlined,
                       activeIcon: Icons.collections,
-                      label: 'Gallerys',
+                      label: 'Gallery',
                       isActive: currentIndex == 1,
                       onTap: () => context.go('/vision-board'),
                     ),

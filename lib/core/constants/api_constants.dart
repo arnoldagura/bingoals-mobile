@@ -36,8 +36,10 @@ class ApiConstants {
   static String miniGoal(String boardId, int position, String miniGoalId) =>
       '/api/boards/$boardId/goals/$position/mini-goals/$miniGoalId';
   static String toggleMiniGoal(
-          String boardId, int position, String miniGoalId) =>
-      '/api/boards/$boardId/goals/$position/mini-goals/$miniGoalId/toggle';
+    String boardId,
+    int position,
+    String miniGoalId,
+  ) => '/api/boards/$boardId/goals/$position/mini-goals/$miniGoalId/toggle';
 
   static String reflection(String boardId, int position) =>
       '/api/boards/$boardId/goals/$position/reflection';
@@ -90,5 +92,6 @@ class ApiConstants {
   static const String tokenKey = 'auth_token';
   static const String userKey = 'auth_user';
 
-  static const String googleServerClientId = '656331294595-huh2kgj7go6770uh1ueti0bqm63th7tj.apps.googleusercontent.com';
+  static const String googleServerClientId =
+      '656331294595-huh2kgj7go6770uh1ueti0bqm63th7tj.apps.googleusercontent.com';
 }

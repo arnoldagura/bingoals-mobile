@@ -25,6 +25,7 @@ import '../../widgets/common/gradient_mesh_background.dart';
 import '../../widgets/common/styled_bottom_sheet.dart';
 import '../../widgets/common/styled_text_field.dart';
 import '../../widgets/common/user_avatar.dart';
+import '../../widgets/goal/board_completion_sheet.dart';
 import '../../widgets/goal/goal_grid.dart';
 
 enum BoardViewMode { grid, vision }
@@ -154,6 +155,8 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
     final miniGoalPctController = TextEditingController();
     final cat = BoardCategory.fromKey(board.category);
     final togglingMgId = ValueNotifier<String?>(null);
+    // Tab selector for existing goals (0=Goal, 1=Progress, 2=Journal)
+    final dialogTab = ValueNotifier<int>(0);
 
     showStyledBottomSheet(
       context: context,
@@ -196,14 +199,63 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
                   ),
                 ),
               ),
+              // ── Tab selector (shown only for existing goals) ──
+              if (!goal.isEmpty)
+                ValueListenableBuilder<int>(
+                  valueListenable: dialogTab,
+                  builder: (_, tab, _) => Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 4, 24, 0),
+                    child: Row(
+                      children: [
+                        for (final entry in [
+                          (0, 'Goal'),
+                          (1, 'Progress'),
+                          (2, 'Journal'),
+                        ])
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () => dialogTab.value = entry.$1,
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 150),
+                                margin: EdgeInsets.only(
+                                  right: entry.$1 < 2 ? 6 : 0,
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 8,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: tab == entry.$1
+                                      ? colorScheme.primary.withValues(
+                                          alpha: 0.1,
+                                        )
+                                      : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  entry.$2,
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: tab == entry.$1
+                                        ? FontWeight.w600
+                                        : FontWeight.w400,
+                                    color: tab == entry.$1
+                                        ? colorScheme.primary
+                                        : colorScheme.onSurface.withValues(
+                                            alpha: 0.45,
+                                          ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
               Flexible(
                 child: SingleChildScrollView(
-                  padding: EdgeInsets.fromLTRB(
-                    24,
-                    8,
-                    24,
-                    MediaQuery.of(sheetContext).viewInsets.bottom + 24,
-                  ),
+                  padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -291,216 +343,583 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
                         hintText: goal.isEmpty
                             ? 'e.g., Run a 5K by July'
                             : 'Rename goal...',
-                        onSubmitted: (_) => _saveGoal(position),
+                        onSubmitted: (_) => _saveGoal(position, sheetContext),
                       ),
                       const SizedBox(height: 24),
 
-                      // ── Milestones (only for existing goals) ──
-                      if (!latestGoal.isEmpty) ...[
-                        // ── Mood color picker ──
-                        sectionLabel('MOOD'),
-                        _MoodPicker(
-                          currentMood: latestGoal.mood,
-                          onMoodSelected: (mood) async {
-                            try {
-                              await ref
-                                  .read(boardActionsProvider)
-                                  .updateGoalMood(
-                                    widget.boardId,
-                                    position,
-                                    mood,
-                                  );
-                            } catch (e) {
-                              _showError(e);
-                            }
-                          },
-                        ),
-                        const SizedBox(height: 20),
-                        sectionLabel('MILESTONES'),
-                        if (latestGoal.miniGoals.isNotEmpty) ...[
-                          Row(
+                      // ── Tab content (existing goals only) ──
+                      if (!latestGoal.isEmpty)
+                        ValueListenableBuilder<int>(
+                          valueListenable: dialogTab,
+                          builder: (_, tab, _) => Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Expanded(
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(6),
-                                  child: LinearProgressIndicator(
-                                    value: latestGoal.progress / 100,
-                                    minHeight: 8,
-                                    backgroundColor: colorScheme.onSurface
-                                        .withValues(alpha: 0.08),
-                                    valueColor: AlwaysStoppedAnimation<Color>(
-                                      _moodColor(latestGoal.mood, colorScheme),
-                                    ),
-                                  ),
+                              // ── Tab 0: Goal (Mood picker) ──
+                              if (tab == 0) ...[
+                                sectionLabel('MOOD'),
+                                _MoodPicker(
+                                  currentMood: latestGoal.mood,
+                                  onMoodSelected: (mood) async {
+                                    try {
+                                      await ref
+                                          .read(boardActionsProvider)
+                                          .updateGoalMood(
+                                            widget.boardId,
+                                            position,
+                                            mood,
+                                          );
+                                    } catch (e) {
+                                      _showError(e);
+                                    }
+                                  },
                                 ),
-                              ),
-                              const SizedBox(width: 10),
-                              Text(
-                                '${latestGoal.progress}%',
-                                style: AppTypography.labelSmall.copyWith(
-                                  color: colorScheme.onSurface.withValues(
-                                    alpha: 0.55,
-                                  ),
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 14),
-                        ],
-                        // Milestone rows with circle checkboxes
-                        ...() {
-                          final effs = _effectivePercentages(
-                            latestGoal.miniGoals,
-                          );
-                          return latestGoal.miniGoals
-                              .asMap()
-                              .entries
-                              .map(
-                                (e) => Container(
-                                  margin: const EdgeInsets.only(bottom: 8),
-                                  padding: const EdgeInsets.fromLTRB(
-                                    12,
-                                    10,
-                                    8,
-                                    10,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: e.value.isComplete
-                                        ? colorScheme.primary.withValues(
-                                            alpha: 0.04,
-                                          )
-                                        : colorScheme.onSurface.withValues(
-                                            alpha: 0.03,
-                                          ),
-                                    borderRadius: BorderRadius.circular(10),
-                                    border: Border.all(
-                                      color: e.value.isComplete
-                                          ? colorScheme.primary.withValues(
-                                              alpha: 0.12,
-                                            )
-                                          : colorScheme.onSurface.withValues(
-                                              alpha: 0.08,
-                                            ),
-                                    ),
-                                  ),
-                                  child: Row(
+                                const SizedBox(height: 28),
+                              ],
+                              // ── Tab 1: Progress (Milestones) ──
+                              if (tab == 1) ...[
+                                sectionLabel('MILESTONES'),
+                                if (latestGoal.miniGoals.isNotEmpty) ...[
+                                  Row(
                                     children: [
-                                      // Animated circle toggle with loading
-                                      ValueListenableBuilder<String?>(
-                                        valueListenable: togglingMgId,
-                                        builder: (_, toggling, _) {
-                                          final isLoading =
-                                              toggling == e.value.id;
-                                          return GestureDetector(
-                                            onTap: isLoading
-                                                ? null
-                                                : () async {
-                                                    togglingMgId.value =
-                                                        e.value.id;
-                                                    try {
-                                                      await ref
-                                                          .read(
-                                                            boardActionsProvider,
-                                                          )
-                                                          .toggleMiniGoal(
-                                                            widget.boardId,
-                                                            position,
-                                                            e.value.id,
-                                                          );
-                                                    } catch (err) {
-                                                      _showError(err);
-                                                    } finally {
-                                                      togglingMgId.value = null;
-                                                    }
-                                                  },
-                                            child: SizedBox(
-                                              width: 22,
-                                              height: 22,
-                                              child: isLoading
-                                                  ? CircularProgressIndicator(
-                                                      strokeWidth: 1.5,
-                                                      color:
-                                                          colorScheme.primary,
-                                                    )
-                                                  : AnimatedContainer(
-                                                      duration: const Duration(
-                                                        milliseconds: 200,
+                                      Expanded(
+                                        child: ClipRRect(
+                                          borderRadius: BorderRadius.circular(
+                                            6,
+                                          ),
+                                          child: LinearProgressIndicator(
+                                            value: latestGoal.progress / 100,
+                                            minHeight: 8,
+                                            backgroundColor: colorScheme
+                                                .onSurface
+                                                .withValues(alpha: 0.08),
+                                            valueColor:
+                                                AlwaysStoppedAnimation<Color>(
+                                                  _moodColor(
+                                                    latestGoal.mood,
+                                                    colorScheme,
+                                                  ),
+                                                ),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Text(
+                                        '${latestGoal.progress}%',
+                                        style: AppTypography.labelSmall
+                                            .copyWith(
+                                              color: colorScheme.onSurface
+                                                  .withValues(alpha: 0.55),
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 14),
+                                ],
+                                // Milestone rows with circle checkboxes
+                                ...() {
+                                  final effs = _effectivePercentages(
+                                    latestGoal.miniGoals,
+                                  );
+                                  return latestGoal.miniGoals
+                                      .asMap()
+                                      .entries
+                                      .map(
+                                        (e) => Container(
+                                          margin: const EdgeInsets.only(
+                                            bottom: 8,
+                                          ),
+                                          padding: const EdgeInsets.fromLTRB(
+                                            12,
+                                            10,
+                                            8,
+                                            10,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: e.value.isComplete
+                                                ? colorScheme.primary
+                                                      .withValues(alpha: 0.04)
+                                                : colorScheme.onSurface
+                                                      .withValues(alpha: 0.03),
+                                            borderRadius: BorderRadius.circular(
+                                              10,
+                                            ),
+                                            border: Border.all(
+                                              color: e.value.isComplete
+                                                  ? colorScheme.primary
+                                                        .withValues(alpha: 0.12)
+                                                  : colorScheme.onSurface
+                                                        .withValues(
+                                                          alpha: 0.08,
+                                                        ),
+                                            ),
+                                          ),
+                                          child: Row(
+                                            children: [
+                                              // Animated circle toggle with loading
+                                              ValueListenableBuilder<String?>(
+                                                valueListenable: togglingMgId,
+                                                builder: (_, toggling, _) {
+                                                  final isLoading =
+                                                      toggling == e.value.id;
+                                                  return GestureDetector(
+                                                    onTap: isLoading
+                                                        ? null
+                                                        : () async {
+                                                            togglingMgId.value =
+                                                                e.value.id;
+                                                            try {
+                                                              await ref
+                                                                  .read(
+                                                                    boardActionsProvider,
+                                                                  )
+                                                                  .toggleMiniGoal(
+                                                                    widget
+                                                                        .boardId,
+                                                                    position,
+                                                                    e.value.id,
+                                                                  );
+                                                            } catch (err) {
+                                                              _showError(err);
+                                                            } finally {
+                                                              togglingMgId
+                                                                      .value =
+                                                                  null;
+                                                            }
+                                                          },
+                                                    child: SizedBox(
+                                                      width: 22,
+                                                      height: 22,
+                                                      child: isLoading
+                                                          ? CircularProgressIndicator(
+                                                              strokeWidth: 1.5,
+                                                              color: colorScheme
+                                                                  .primary,
+                                                            )
+                                                          : AnimatedContainer(
+                                                              duration:
+                                                                  const Duration(
+                                                                    milliseconds:
+                                                                        200,
+                                                                  ),
+                                                              decoration: BoxDecoration(
+                                                                shape: BoxShape
+                                                                    .circle,
+                                                                border: Border.all(
+                                                                  color:
+                                                                      e
+                                                                          .value
+                                                                          .isComplete
+                                                                      ? colorScheme
+                                                                            .primary
+                                                                      : colorScheme
+                                                                            .onSurface
+                                                                            .withValues(
+                                                                              alpha: 0.25,
+                                                                            ),
+                                                                  width: 1.5,
+                                                                ),
+                                                                color:
+                                                                    e
+                                                                        .value
+                                                                        .isComplete
+                                                                    ? colorScheme
+                                                                          .primary
+                                                                    : Colors
+                                                                          .transparent,
+                                                              ),
+                                                              child:
+                                                                  e
+                                                                      .value
+                                                                      .isComplete
+                                                                  ? Icon(
+                                                                      Icons
+                                                                          .check,
+                                                                      size: 13,
+                                                                      color: colorScheme
+                                                                          .onPrimary,
+                                                                    )
+                                                                  : null,
+                                                            ),
+                                                    ),
+                                                  );
+                                                },
+                                              ),
+                                              const SizedBox(width: 12),
+                                              Expanded(
+                                                child: GestureDetector(
+                                                  onTap: () =>
+                                                      _showEditMiniGoalDialog(
+                                                        sheetContext,
+                                                        position,
+                                                        latestGoal,
+                                                        e.value,
                                                       ),
-                                                      decoration: BoxDecoration(
-                                                        shape: BoxShape.circle,
-                                                        border: Border.all(
+                                                  child: Column(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .start,
+                                                    children: [
+                                                      Text(
+                                                        e.value.title,
+                                                        style: AppTypography.bodyMedium.copyWith(
                                                           color:
                                                               e.value.isComplete
                                                               ? colorScheme
-                                                                    .primary
-                                                              : colorScheme
                                                                     .onSurface
                                                                     .withValues(
                                                                       alpha:
-                                                                          0.25,
-                                                                    ),
-                                                          width: 1.5,
+                                                                          0.4,
+                                                                    )
+                                                              : colorScheme
+                                                                    .onSurface,
+                                                          decoration:
+                                                              e.value.isComplete
+                                                              ? TextDecoration
+                                                                    .lineThrough
+                                                              : null,
+                                                          decorationColor:
+                                                              colorScheme
+                                                                  .onSurface
+                                                                  .withValues(
+                                                                    alpha: 0.4,
+                                                                  ),
                                                         ),
-                                                        color:
-                                                            e.value.isComplete
-                                                            ? colorScheme
-                                                                  .primary
-                                                            : Colors
-                                                                  .transparent,
                                                       ),
-                                                      child: e.value.isComplete
-                                                          ? Icon(
-                                                              Icons.check,
-                                                              size: 13,
+                                                      Text(
+                                                        _formatPct(effs[e.key]),
+                                                        style: AppTypography
+                                                            .caption
+                                                            .copyWith(
                                                               color: colorScheme
-                                                                  .onPrimary,
-                                                            )
-                                                          : null,
+                                                                  .onSurface
+                                                                  .withValues(
+                                                                    alpha: 0.35,
+                                                                  ),
+                                                              fontSize: 10,
+                                                            ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 4),
+                                              // Camera icon for memory upload
+                                              GestureDetector(
+                                                onTap: () =>
+                                                    _pickImageForMilestone(
+                                                      sheetContext,
+                                                      position,
+                                                      e.value.id,
                                                     ),
-                                            ),
-                                          );
-                                        },
+                                                child: e.value.imageUrl != null
+                                                    ? ClipRRect(
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              4,
+                                                            ),
+                                                        child: Image.network(
+                                                          e.value.imageUrl!
+                                                                  .startsWith(
+                                                                    'http',
+                                                                  )
+                                                              ? e
+                                                                    .value
+                                                                    .imageUrl!
+                                                              : '${ApiConstants.baseUrl}${e.value.imageUrl}',
+                                                          width: 22,
+                                                          height: 22,
+                                                          fit: BoxFit.cover,
+                                                          errorBuilder:
+                                                              (_, _, _) => Icon(
+                                                                Icons
+                                                                    .add_a_photo_outlined,
+                                                                size: 16,
+                                                                color: colorScheme
+                                                                    .onSurface
+                                                                    .withValues(
+                                                                      alpha:
+                                                                          0.3,
+                                                                    ),
+                                                              ),
+                                                        ),
+                                                      )
+                                                    : Icon(
+                                                        Icons
+                                                            .add_a_photo_outlined,
+                                                        size: 16,
+                                                        color: colorScheme
+                                                            .onSurface
+                                                            .withValues(
+                                                              alpha: 0.3,
+                                                            ),
+                                                      ),
+                                              ),
+                                              const SizedBox(width: 4),
+                                              GestureDetector(
+                                                onTap: () async {
+                                                  try {
+                                                    await ref
+                                                        .read(
+                                                          boardActionsProvider,
+                                                        )
+                                                        .deleteMiniGoal(
+                                                          widget.boardId,
+                                                          position,
+                                                          e.value.id,
+                                                        );
+                                                  } catch (err) {
+                                                    _showError(err);
+                                                  }
+                                                },
+                                                child: Icon(
+                                                  Icons.close,
+                                                  size: 16,
+                                                  color: colorScheme.onSurface
+                                                      .withValues(alpha: 0.25),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      )
+                                      .toList();
+                                }(),
+                                // + Add Milestone
+                                GestureDetector(
+                                  onTap: () => _showAddMiniGoalDialog(
+                                    sheetContext,
+                                    position,
+                                    latestGoal,
+                                    miniGoalTitleController,
+                                    miniGoalPctController,
+                                  ),
+                                  child: Container(
+                                    width: double.infinity,
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 12,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(
+                                        color: colorScheme.onSurface.withValues(
+                                          alpha: 0.15,
+                                        ),
                                       ),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: GestureDetector(
-                                          onTap: () => _showEditMiniGoalDialog(
+                                      color: colorScheme.onSurface.withValues(
+                                        alpha: 0.02,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          Icons.add,
+                                          size: 16,
+                                          color: colorScheme.onSurface
+                                              .withValues(alpha: 0.4),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          'Add Milestone',
+                                          style: AppTypography.bodySmall
+                                              .copyWith(
+                                                color: colorScheme.onSurface
+                                                    .withValues(alpha: 0.45),
+                                              ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 28),
+                              ],
+                              // ── Tab 2: Journal ──
+                              if (tab == 2) ...[
+                                // ── Journal Notes ──
+                                sectionLabel('JOURNAL NOTES'),
+                                StyledTextField(
+                                  controller: _notesController,
+                                  maxLines: 3,
+                                  hintText: 'How is this goal going?',
+                                ),
+                                const SizedBox(height: 24),
+
+                                // ── Reflection (completed goals only) ──
+                                if (latestGoal.isCompleted) ...[
+                                  sectionLabel('REFLECTION'),
+                                  _buildReflectionField(
+                                    context: sheetContext,
+                                    controller: _victoriesController,
+                                    hintText: 'What went well?',
+                                    prefixIcon: Icons.emoji_events_outlined,
+                                    colorScheme: colorScheme,
+                                  ),
+                                  const SizedBox(height: 12),
+                                  _buildReflectionField(
+                                    context: sheetContext,
+                                    controller: _obstaclesController,
+                                    hintText: 'What challenges did you face?',
+                                    prefixIcon: Icons.shield_outlined,
+                                    colorScheme: colorScheme,
+                                  ),
+                                  const SizedBox(height: 24),
+                                ],
+
+                                // ── Memories ──
+                                sectionLabel('MEMORIES'),
+                                SizedBox(
+                                  height: 110,
+                                  child: ListView(
+                                    scrollDirection: Axis.horizontal,
+                                    children: [
+                                      ...latestGoal.memories.map((memory) {
+                                        final fullUrl =
+                                            memory.imageUrl.startsWith('http')
+                                            ? memory.imageUrl
+                                            : '${ApiConstants.baseUrl}${memory.imageUrl}';
+                                        return GestureDetector(
+                                          onLongPress: () => _showMemoryOptions(
                                             sheetContext,
                                             position,
-                                            latestGoal,
-                                            e.value,
+                                            memory,
+                                          ),
+                                          child: Padding(
+                                            padding: const EdgeInsets.only(
+                                              right: 10,
+                                            ),
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Stack(
+                                                  children: [
+                                                    ClipRRect(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            10,
+                                                          ),
+                                                      child: CachedNetworkImage(
+                                                        imageUrl: fullUrl,
+                                                        width: 90,
+                                                        height: 90,
+                                                        fit: BoxFit.cover,
+                                                        placeholder: (_, _) =>
+                                                            Container(
+                                                              width: 90,
+                                                              height: 90,
+                                                              color: colorScheme
+                                                                  .surfaceContainerHighest,
+                                                            ),
+                                                        errorWidget:
+                                                            (
+                                                              _,
+                                                              _,
+                                                              _,
+                                                            ) => Container(
+                                                              width: 90,
+                                                              height: 90,
+                                                              color: colorScheme
+                                                                  .surfaceContainerHighest,
+                                                              child: const Icon(
+                                                                Icons
+                                                                    .broken_image_outlined,
+                                                              ),
+                                                            ),
+                                                      ),
+                                                    ),
+                                                    if (memory.isBoardImage)
+                                                      Positioned(
+                                                        top: 4,
+                                                        left: 4,
+                                                        child: Container(
+                                                          padding:
+                                                              const EdgeInsets.all(
+                                                                2,
+                                                              ),
+                                                          decoration:
+                                                              const BoxDecoration(
+                                                                color: Colors
+                                                                    .amber,
+                                                                shape: BoxShape
+                                                                    .circle,
+                                                              ),
+                                                          child: const Icon(
+                                                            Icons.star_rounded,
+                                                            size: 12,
+                                                            color: Colors.white,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                  ],
+                                                ),
+                                                if (memory.label.isNotEmpty)
+                                                  SizedBox(
+                                                    width: 90,
+                                                    child: Padding(
+                                                      padding:
+                                                          const EdgeInsets.only(
+                                                            top: 4,
+                                                          ),
+                                                      child: Text(
+                                                        memory.label,
+                                                        style: AppTypography
+                                                            .caption
+                                                            .copyWith(
+                                                              fontSize: 10,
+                                                              color: colorScheme
+                                                                  .onSurface
+                                                                  .withValues(
+                                                                    alpha: 0.6,
+                                                                  ),
+                                                            ),
+                                                        maxLines: 1,
+                                                        overflow: TextOverflow
+                                                            .ellipsis,
+                                                      ),
+                                                    ),
+                                                  ),
+                                              ],
+                                            ),
+                                          ),
+                                        );
+                                      }),
+                                      // Add memory button
+                                      GestureDetector(
+                                        onTap: () => _pickImageForGoal(
+                                          sheetContext,
+                                          position,
+                                        ),
+                                        child: Container(
+                                          width: 90,
+                                          height: 90,
+                                          decoration: BoxDecoration(
+                                            borderRadius: BorderRadius.circular(
+                                              10,
+                                            ),
+                                            border: Border.all(
+                                              color: colorScheme.onSurface
+                                                  .withValues(alpha: 0.2),
+                                              width: 1.5,
+                                            ),
+                                            color: colorScheme.onSurface
+                                                .withValues(alpha: 0.03),
                                           ),
                                           child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
                                             children: [
-                                              Text(
-                                                e.value.title,
-                                                style: AppTypography.bodyMedium
-                                                    .copyWith(
-                                                      color: e.value.isComplete
-                                                          ? colorScheme
-                                                                .onSurface
-                                                                .withValues(
-                                                                  alpha: 0.4,
-                                                                )
-                                                          : colorScheme
-                                                                .onSurface,
-                                                      decoration:
-                                                          e.value.isComplete
-                                                          ? TextDecoration
-                                                                .lineThrough
-                                                          : null,
-                                                      decorationColor:
-                                                          colorScheme.onSurface
-                                                              .withValues(
-                                                                alpha: 0.4,
-                                                              ),
-                                                    ),
+                                              Icon(
+                                                Icons.add_a_photo_outlined,
+                                                size: 22,
+                                                color: colorScheme.onSurface
+                                                    .withValues(alpha: 0.3),
                                               ),
+                                              const SizedBox(height: 4),
                                               Text(
-                                                _formatPct(effs[e.key]),
+                                                'Add memory',
                                                 style: AppTypography.caption
                                                     .copyWith(
                                                       color: colorScheme
@@ -515,462 +934,191 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
                                           ),
                                         ),
                                       ),
-                                      const SizedBox(width: 4),
-                                      // Camera icon for memory upload
-                                      GestureDetector(
-                                        onTap: () => _pickImageForMilestone(
-                                          sheetContext,
-                                          position,
-                                          e.value.id,
-                                        ),
-                                        child: e.value.imageUrl != null
-                                            ? ClipRRect(
-                                                borderRadius:
-                                                    BorderRadius.circular(4),
-                                                child: Image.network(
-                                                  e.value.imageUrl!.startsWith(
-                                                        'http',
-                                                      )
-                                                      ? e.value.imageUrl!
-                                                      : '${ApiConstants.baseUrl}${e.value.imageUrl}',
-                                                  width: 22,
-                                                  height: 22,
-                                                  fit: BoxFit.cover,
-                                                  errorBuilder: (_, _, _) => Icon(
-                                                    Icons.add_a_photo_outlined,
-                                                    size: 16,
-                                                    color: colorScheme.onSurface
-                                                        .withValues(alpha: 0.3),
-                                                  ),
-                                                ),
-                                              )
-                                            : Icon(
-                                                Icons.add_a_photo_outlined,
-                                                size: 16,
-                                                color: colorScheme.onSurface
-                                                    .withValues(alpha: 0.3),
-                                              ),
-                                      ),
-                                      const SizedBox(width: 4),
-                                      GestureDetector(
-                                        onTap: () async {
-                                          try {
-                                            await ref
-                                                .read(boardActionsProvider)
-                                                .deleteMiniGoal(
-                                                  widget.boardId,
-                                                  position,
-                                                  e.value.id,
-                                                );
-                                          } catch (err) {
-                                            _showError(err);
-                                          }
-                                        },
-                                        child: Icon(
-                                          Icons.close,
-                                          size: 16,
-                                          color: colorScheme.onSurface
-                                              .withValues(alpha: 0.25),
-                                        ),
-                                      ),
                                     ],
                                   ),
                                 ),
-                              )
-                              .toList();
-                        }(),
-                        // + Add Milestone
-                        GestureDetector(
-                          onTap: () => _showAddMiniGoalDialog(
-                            sheetContext,
-                            position,
-                            latestGoal,
-                            miniGoalTitleController,
-                            miniGoalPctController,
-                          ),
-                          child: Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(
-                                color: colorScheme.onSurface.withValues(
-                                  alpha: 0.15,
-                                ),
-                              ),
-                              color: colorScheme.onSurface.withValues(
-                                alpha: 0.02,
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.add,
-                                  size: 16,
-                                  color: colorScheme.onSurface.withValues(
-                                    alpha: 0.4,
+                                const SizedBox(height: 28),
+
+                                // ── Comments (shared boards only) ──
+                                if (board.isShared) ...[
+                                  const Divider(
+                                    height: 24,
+                                    thickness: 0.5,
                                   ),
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  'Add Milestone',
-                                  style: AppTypography.bodySmall.copyWith(
-                                    color: colorScheme.onSurface.withValues(
-                                      alpha: 0.45,
-                                    ),
-                                  ),
-                                ),
+                                  sectionLabel('COMMENTS'),
+                                  _CommentsSection(goalId: latestGoal.id),
+                                  const SizedBox(height: 8),
+                                ],
                               ],
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+              // ── Sticky action bar (always visible at bottom) ──
+              const Divider(height: 1),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Stamp Complete / Mark Incomplete
+                    if (!goal.isEmpty && latestGoal.miniGoals.isEmpty) ...[
+                      SizedBox(
+                        width: double.infinity,
+                        height: 52,
+                        child: ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: goal.isCompleted
+                                ? colorScheme.onSurface.withValues(alpha: 0.08)
+                                : colorScheme.onSurface,
+                            foregroundColor: goal.isCompleted
+                                ? colorScheme.onSurface
+                                : colorScheme.surface,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(50),
+                              side: goal.isCompleted
+                                  ? BorderSide(
+                                      color: colorScheme.onSurface.withValues(
+                                        alpha: 0.15,
+                                      ),
+                                    )
+                                  : BorderSide.none,
                             ),
                           ),
-                        ),
-                        const SizedBox(height: 24),
-
-                        // ── Journal Notes ──
-                        sectionLabel('JOURNAL NOTES'),
-                        StyledTextField(
-                          controller: _notesController,
-                          maxLines: 3,
-                          hintText: 'How is this goal going?',
-                        ),
-                        const SizedBox(height: 24),
-
-                        // ── Reflection (completed goals only) ──
-                        if (latestGoal.isCompleted) ...[
-                          sectionLabel('REFLECTION'),
-                          _buildReflectionField(
-                            context: sheetContext,
-                            controller: _victoriesController,
-                            hintText: 'What went well?',
-                            prefixIcon: Icons.emoji_events_outlined,
-                            colorScheme: colorScheme,
+                          icon: Icon(
+                            goal.isCompleted
+                                ? Icons.undo
+                                : Icons.verified_outlined,
+                            size: 18,
                           ),
-                          const SizedBox(height: 12),
-                          _buildReflectionField(
-                            context: sheetContext,
-                            controller: _obstaclesController,
-                            hintText: 'What challenges did you face?',
-                            prefixIcon: Icons.shield_outlined,
-                            colorScheme: colorScheme,
+                          label: Text(
+                            goal.isCompleted
+                                ? 'Mark Incomplete'
+                                : 'Stamp Complete',
+                            style: AppTypography.button.copyWith(
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.5,
+                            ),
                           ),
-                          const SizedBox(height: 24),
-                        ],
-
-                        // ── Memories ──
-                        sectionLabel('MEMORIES'),
-                        SizedBox(
-                          height: 110,
-                          child: ListView(
-                            scrollDirection: Axis.horizontal,
-                            children: [
-                              ...latestGoal.memories.map((memory) {
-                                final fullUrl =
-                                    memory.imageUrl.startsWith('http')
-                                    ? memory.imageUrl
-                                    : '${ApiConstants.baseUrl}${memory.imageUrl}';
-                                return GestureDetector(
-                                  onLongPress: () => _showMemoryOptions(
-                                    sheetContext,
+                          onPressed: () {
+                            Navigator.pop(sheetContext);
+                            if (goal.isCompleted) {
+                              ref
+                                  .read(boardActionsProvider)
+                                  .toggleGoalCompletion(
+                                    widget.boardId,
                                     position,
-                                    memory,
+                                  )
+                                  .catchError((e) {
+                                    _showError(e);
+                                    return <String, dynamic>{};
+                                  });
+                            } else {
+                              _showIconPhotoPicker(
+                                position,
+                                completeFirst: true,
+                              );
+                            }
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                    ],
+                    // Save / Create Goal
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(
+                            color: colorScheme.onSurface.withValues(alpha: 0.2),
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(50),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                        ),
+                        onPressed: () => _saveGoal(position, sheetContext),
+                        child: Text(
+                          goal.isEmpty ? 'Create Goal' : 'Save',
+                          style: AppTypography.button.copyWith(
+                            color: colorScheme.onSurface,
+                          ),
+                        ),
+                      ),
+                    ),
+                    // Delete Goal
+                    if (!goal.isEmpty) ...[
+                      const SizedBox(height: 10),
+                      Center(
+                        child: GestureDetector(
+                          onTap: () {
+                            showDialog(
+                              context: sheetContext,
+                              builder: (dialogCtx) => AlertDialog(
+                                title: const Text('Delete Goal?'),
+                                content: const Text(
+                                  'This will clear the goal, its milestones, and notes. This cannot be undone.',
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(dialogCtx),
+                                    child: const Text('Cancel'),
                                   ),
-                                  child: Padding(
-                                    padding: const EdgeInsets.only(right: 10),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Stack(
-                                          children: [
-                                            ClipRRect(
-                                              borderRadius:
-                                                  BorderRadius.circular(10),
-                                              child: CachedNetworkImage(
-                                                imageUrl: fullUrl,
-                                                width: 90,
-                                                height: 90,
-                                                fit: BoxFit.cover,
-                                                placeholder: (_, _) => Container(
-                                                  width: 90,
-                                                  height: 90,
-                                                  color: colorScheme
-                                                      .surfaceContainerHighest,
-                                                ),
-                                                errorWidget: (_, _, _) => Container(
-                                                  width: 90,
-                                                  height: 90,
-                                                  color: colorScheme
-                                                      .surfaceContainerHighest,
-                                                  child: const Icon(
-                                                    Icons.broken_image_outlined,
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                            if (memory.isBoardImage)
-                                              Positioned(
-                                                top: 4,
-                                                left: 4,
-                                                child: Container(
-                                                  padding: const EdgeInsets.all(
-                                                    2,
-                                                  ),
-                                                  decoration:
-                                                      const BoxDecoration(
-                                                        color: Colors.amber,
-                                                        shape: BoxShape.circle,
-                                                      ),
-                                                  child: const Icon(
-                                                    Icons.star_rounded,
-                                                    size: 12,
-                                                    color: Colors.white,
-                                                  ),
-                                                ),
-                                              ),
-                                          ],
-                                        ),
-                                        if (memory.label.isNotEmpty)
-                                          SizedBox(
-                                            width: 90,
-                                            child: Padding(
-                                              padding: const EdgeInsets.only(
-                                                top: 4,
-                                              ),
-                                              child: Text(
-                                                memory.label,
-                                                style: AppTypography.caption
-                                                    .copyWith(
-                                                      fontSize: 10,
-                                                      color: colorScheme
-                                                          .onSurface
-                                                          .withValues(
-                                                            alpha: 0.6,
-                                                          ),
-                                                    ),
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                            ),
-                                          ),
-                                      ],
+                                  TextButton(
+                                    onPressed: () async {
+                                      Navigator.pop(dialogCtx);
+                                      Navigator.pop(sheetContext);
+                                      try {
+                                        await ref
+                                            .read(boardActionsProvider)
+                                            .clearGoal(
+                                              widget.boardId,
+                                              position,
+                                            );
+                                      } catch (e) {
+                                        _showError(e);
+                                      }
+                                    },
+                                    child: Text(
+                                      'Delete',
+                                      style: TextStyle(
+                                        color: Colors.red.shade700,
+                                      ),
                                     ),
                                   ),
-                                );
-                              }),
-                              // Add memory button
-                              GestureDetector(
-                                onTap: () =>
-                                    _pickImageForGoal(sheetContext, position),
-                                child: Container(
-                                  width: 90,
-                                  height: 90,
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(10),
-                                    border: Border.all(
-                                      color: colorScheme.onSurface.withValues(
-                                        alpha: 0.2,
-                                      ),
-                                      width: 1.5,
-                                    ),
-                                    color: colorScheme.onSurface.withValues(
-                                      alpha: 0.03,
-                                    ),
-                                  ),
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        Icons.add_a_photo_outlined,
-                                        size: 22,
-                                        color: colorScheme.onSurface.withValues(
-                                          alpha: 0.3,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        'Add memory',
-                                        style: AppTypography.caption.copyWith(
-                                          color: colorScheme.onSurface
-                                              .withValues(alpha: 0.35),
-                                          fontSize: 10,
-                                        ),
-                                      ),
-                                    ],
+                                ],
+                              ),
+                            );
+                          },
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.delete_outline,
+                                size: 14,
+                                color: colorScheme.onSurface.withValues(
+                                  alpha: 0.35,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Delete Goal',
+                                style: AppTypography.caption.copyWith(
+                                  color: colorScheme.onSurface.withValues(
+                                    alpha: 0.35,
                                   ),
                                 ),
                               ),
                             ],
                           ),
                         ),
-                        const SizedBox(height: 28),
-                      ],
-
-                      // ── Stamp Complete / Mark Incomplete ──
-                      if (!goal.isEmpty && latestGoal.miniGoals.isEmpty) ...[
-                        SizedBox(
-                          width: double.infinity,
-                          height: 52,
-                          child: ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: goal.isCompleted
-                                  ? colorScheme.onSurface.withValues(
-                                      alpha: 0.08,
-                                    )
-                                  : colorScheme.onSurface,
-                              foregroundColor: goal.isCompleted
-                                  ? colorScheme.onSurface
-                                  : colorScheme.surface,
-                              elevation: 0,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(50),
-                                side: goal.isCompleted
-                                    ? BorderSide(
-                                        color: colorScheme.onSurface.withValues(
-                                          alpha: 0.15,
-                                        ),
-                                      )
-                                    : BorderSide.none,
-                              ),
-                            ),
-                            icon: Icon(
-                              goal.isCompleted
-                                  ? Icons.undo
-                                  : Icons.verified_outlined,
-                              size: 18,
-                            ),
-                            label: Text(
-                              goal.isCompleted
-                                  ? 'Mark Incomplete'
-                                  : 'Stamp Complete',
-                              style: AppTypography.button.copyWith(
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 0.5,
-                              ),
-                            ),
-                            onPressed: () {
-                              Navigator.pop(context);
-                              if (goal.isCompleted) {
-                                // Uncomplete directly
-                                ref
-                                    .read(boardActionsProvider)
-                                    .toggleGoalCompletion(
-                                      widget.boardId,
-                                      position,
-                                    )
-                                    .catchError((e) {
-                                      _showError(e);
-                                      return <String, dynamic>{};
-                                    });
-                              } else {
-                                // Show icon/photo picker, which completes
-                                // the goal after the user picks or skips
-                                _showIconPhotoPicker(
-                                  position,
-                                  completeFirst: true,
-                                );
-                              }
-                            },
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                      ],
-
-                      // ── Save ──
-                      SizedBox(
-                        width: double.infinity,
-                        child: OutlinedButton(
-                          style: OutlinedButton.styleFrom(
-                            side: BorderSide(
-                              color: colorScheme.onSurface.withValues(
-                                alpha: 0.2,
-                              ),
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(50),
-                            ),
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                          ),
-                          onPressed: () => _saveGoal(position),
-                          child: Text(
-                            goal.isEmpty ? 'Create Goal' : 'Save',
-                            style: AppTypography.button.copyWith(
-                              color: colorScheme.onSurface,
-                            ),
-                          ),
-                        ),
                       ),
-
-                      // ── Delete Goal ──
-                      if (!goal.isEmpty) ...[
-                        const SizedBox(height: 12),
-                        Center(
-                          child: GestureDetector(
-                            onTap: () {
-                              showDialog(
-                                context: sheetContext,
-                                builder: (dialogCtx) => AlertDialog(
-                                  title: const Text('Delete Goal?'),
-                                  content: const Text(
-                                    'This will clear the goal, its milestones, and notes. This cannot be undone.',
-                                  ),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () => Navigator.pop(dialogCtx),
-                                      child: const Text('Cancel'),
-                                    ),
-                                    TextButton(
-                                      onPressed: () async {
-                                        Navigator.pop(dialogCtx);
-                                        Navigator.pop(sheetContext);
-                                        try {
-                                          await ref
-                                              .read(boardActionsProvider)
-                                              .clearGoal(
-                                                widget.boardId,
-                                                position,
-                                              );
-                                        } catch (e) {
-                                          _showError(e);
-                                        }
-                                      },
-                                      child: Text(
-                                        'Delete',
-                                        style: TextStyle(
-                                          color: Colors.red.shade700,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.delete_outline,
-                                  size: 14,
-                                  color: colorScheme.onSurface.withValues(
-                                    alpha: 0.35,
-                                  ),
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  'Delete Goal',
-                                  style: AppTypography.caption.copyWith(
-                                    color: colorScheme.onSurface.withValues(
-                                      alpha: 0.35,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
                     ],
-                  ),
+                  ],
                 ),
               ),
             ],
@@ -1680,6 +1828,87 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
     '👑',
   ];
 
+  /// Shows a quick-action sheet on long-press — self-labels all available
+  /// actions so users immediately understand what long-press does.
+  void _showGoalQuickActions(Board board, int position) {
+    final goal = board.goals[position];
+    showModalBottomSheet(
+      context: context,
+      builder: (sheetCtx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
+                child: Text(
+                  goal.title ?? 'Goal',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const Divider(height: 16),
+              // Open milestones — only if goal has milestones and is not done
+              if (goal.miniGoals.isNotEmpty && !goal.isCompleted)
+                ListTile(
+                  leading: const Icon(Icons.checklist_rounded),
+                  title: const Text('Open Milestones'),
+                  subtitle: Text(
+                    '${goal.miniGoals.where((m) => m.isComplete).length}/${goal.miniGoals.length} done',
+                  ),
+                  onTap: () {
+                    Navigator.pop(sheetCtx);
+                    _showMiniGoalChecklist(board, position);
+                  },
+                ),
+              if (!goal.isCompleted)
+                ListTile(
+                  leading: const Icon(Icons.verified_outlined),
+                  title: const Text('Stamp Complete'),
+                  subtitle: const Text('Mark this goal as achieved'),
+                  onTap: () {
+                    Navigator.pop(sheetCtx);
+                    _showIconPhotoPicker(position, completeFirst: true);
+                  },
+                ),
+              // Mark Incomplete — only if already completed
+              if (goal.isCompleted)
+                ListTile(
+                  leading: const Icon(Icons.undo),
+                  title: const Text('Mark Incomplete'),
+                  subtitle: const Text('Move back to in-progress'),
+                  onTap: () async {
+                    Navigator.pop(sheetCtx);
+                    try {
+                      await ref
+                          .read(boardActionsProvider)
+                          .toggleGoalCompletion(widget.boardId, position);
+                    } catch (e) {
+                      _showError(e);
+                    }
+                  },
+                ),
+              // Edit goal — always available
+              ListTile(
+                leading: const Icon(Icons.edit_outlined),
+                title: const Text('Edit Goal'),
+                onTap: () {
+                  Navigator.pop(sheetCtx);
+                  _showGoalDialog(board, position);
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   /// Shows the icon/photo picker bottom sheet.
   /// If [completeFirst] is true, toggles goal completion before setting
   /// the icon/photo (used when completing a goal for the first time).
@@ -1698,6 +1927,24 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
         _confettiController.play();
         final milestones =
             (result['milestones'] as List?)?.cast<String>() ?? [];
+        // Full board completion — show the celebration sheet
+        if (milestones.contains('blackout')) {
+          final board = ref
+              .read(boardDetailProvider(widget.boardId))
+              .valueOrNull;
+          if (board != null && mounted) {
+            await showModalBottomSheet(
+              context: context,
+              isScrollControlled: true,
+              backgroundColor: Colors.transparent,
+              builder: (_) => BoardCompletionSheet(
+                boardTitle: board.title,
+                goalCount: board.goalCount,
+              ),
+            );
+            return;
+          }
+        }
         if (milestones.isNotEmpty) {
           _showMilestoneCelebration(
             milestones,
@@ -2057,12 +2304,12 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
     );
   }
 
-  Future<void> _saveGoal(int position) async {
+  Future<void> _saveGoal(int position, BuildContext sheetContext) async {
     final title = _goalTitleController.text.trim();
     final notes = _notesController.text.trim();
     final victories = _victoriesController.text.trim();
     final obstacles = _obstaclesController.text.trim();
-    Navigator.pop(context);
+    Navigator.pop(sheetContext);
     try {
       final actions = ref.read(boardActionsProvider);
       await actions.updateGoalTitle(widget.boardId, position, title);
@@ -2101,6 +2348,7 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
     final colorScheme = Theme.of(context).colorScheme;
 
     return boardAsync.when(
+      skipLoadingOnReload: true,
       loading: () => GradientMeshScaffold(
         body: const Center(child: CircularProgressIndicator()),
       ),
@@ -2230,6 +2478,25 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
               overflow: TextOverflow.ellipsis,
             ),
           ),
+          // Progress bar
+          if (board.goalCount > 0)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: board.progressPercent / 100,
+                  minHeight: 3,
+                  backgroundColor: colorScheme.onSurface.withValues(
+                    alpha: 0.08,
+                  ),
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    BoardCategory.fromKey(board.category)?.color ??
+                        colorScheme.primary,
+                  ),
+                ),
+              ),
+            ),
           // Stats + View toggle
           Padding(
             padding: const EdgeInsets.only(left: 16),
@@ -2536,61 +2803,80 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
 
   Widget _buildGridView(Board board) {
     final colorScheme = Theme.of(context).colorScheme;
-    return Center(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 500),
-          child: Container(
-            padding: const EdgeInsets.all(6),
+    final boardIsEmpty = board.goals.every((g) => g.isEmpty);
+    return Column(
+      children: [
+        // Empty board hint banner — dismisses once a goal is added
+        if (boardIsEmpty)
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: BoxDecoration(
-              color: colorScheme.surface.withValues(alpha: 0.3),
-              borderRadius: BorderRadius.circular(14),
+              color: colorScheme.primary.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: colorScheme.outline.withValues(alpha: 0.1),
+                color: colorScheme.primary.withValues(alpha: 0.15),
               ),
             ),
-            child: Hero(
-              tag: 'board-grid-${board.id}',
-              child: GoalGrid(
-                goals: board.goals,
-                gridSize: board.gridSize,
-                onCellTap: (index) {
-                  HapticFeedback.lightImpact();
-                  _showGoalDialog(board, index);
-                },
-                onCellLongPress: (index) async {
-                  final goal = board.goals[index];
-                  if (goal.isEmpty) return;
-
-                  HapticFeedback.mediumImpact();
-
-                  // Has mini-goals and not yet completed → show checklist
-                  if (goal.miniGoals.isNotEmpty && !goal.isCompleted) {
-                    _showMiniGoalChecklist(board, index);
-                    return;
-                  }
-
-                  // Not completed → show picker first, then complete
-                  if (!goal.isCompleted) {
-                    _showIconPhotoPicker(index, completeFirst: true);
-                    return;
-                  }
-
-                  // Already completed → uncomplete directly
-                  try {
-                    await ref
-                        .read(boardActionsProvider)
-                        .toggleGoalCompletion(widget.boardId, index);
-                  } catch (e) {
-                    _showError(e);
-                  }
-                },
+            child: Row(
+              children: [
+                Icon(
+                  Icons.lightbulb_outline,
+                  size: 16,
+                  color: colorScheme.primary.withValues(alpha: 0.7),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Tap a cell to add your first goal · Long-press to stamp complete',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: colorScheme.onSurface.withValues(alpha: 0.6),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        Expanded(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 500),
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: colorScheme.surface.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: colorScheme.outline.withValues(alpha: 0.1),
+                    ),
+                  ),
+                  child: Hero(
+                    tag: 'board-grid-${board.id}',
+                    child: GoalGrid(
+                      goals: board.goals,
+                      gridSize: board.gridSize,
+                      onCellTap: (index) {
+                        HapticFeedback.lightImpact();
+                        _showGoalDialog(board, index);
+                      },
+                      onCellLongPress: (index) {
+                        final goal = board.goals[index];
+                        if (goal.isEmpty) return;
+                        HapticFeedback.mediumImpact();
+                        _showGoalQuickActions(board, index);
+                      },
+                    ),
+                  ),
+                ),
               ),
             ),
           ),
         ),
-      ),
+      ],
     );
   }
 

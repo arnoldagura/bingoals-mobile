@@ -11,6 +11,7 @@ class GoalCell extends StatefulWidget {
   final int progress;
   final String? icon;
   final String? imageUrl;
+  final int commentCount;
   final VoidCallback? onTap;
   final VoidCallback? onLongPress;
 
@@ -22,6 +23,7 @@ class GoalCell extends StatefulWidget {
     this.progress = 0,
     this.icon,
     this.imageUrl,
+    this.commentCount = 0,
     this.onTap,
     this.onLongPress,
   });
@@ -235,6 +237,30 @@ class _GoalCellState extends State<GoalCell>
           right: 4,
           child: Icon(Icons.check_circle, color: cs.primary, size: 14),
         ),
+        if (widget.commentCount > 0)
+          Positioned(
+            bottom: 3,
+            right: 3,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.chat_bubble_outline,
+                  size: 8,
+                  color: cs.onPrimaryContainer.withValues(alpha: 0.5),
+                ),
+                const SizedBox(width: 2),
+                Text(
+                  '${widget.commentCount}',
+                  style: TextStyle(
+                    fontSize: 7,
+                    color: cs.onPrimaryContainer.withValues(alpha: 0.5),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
       ],
     );
   }
@@ -260,7 +286,57 @@ class _GoalCellState extends State<GoalCell>
           ),
         ),
         Positioned(top: 3, right: 3, child: _buildStatusIndicator(cs)),
-        // Bottom progress strip for in-progress goals
+        // Long-press hint for not-started goals
+        if (widget.status == GoalStatus.notStarted &&
+            widget.onLongPress != null)
+          Positioned(
+            bottom: 3,
+            left: 3,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.touch_app,
+                  size: 8,
+                  color: cs.onSurface.withValues(alpha: 0.3),
+                ),
+                const SizedBox(width: 1),
+                Text(
+                  'hold',
+                  style: TextStyle(
+                    fontSize: 7,
+                    color: cs.onSurface.withValues(alpha: 0.3),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        // Comment count badge
+        if (widget.commentCount > 0)
+          Positioned(
+            bottom: 3,
+            right: 3,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.chat_bubble_outline,
+                  size: 8,
+                  color: cs.onSurface.withValues(alpha: 0.4),
+                ),
+                const SizedBox(width: 2),
+                Text(
+                  '${widget.commentCount}',
+                  style: TextStyle(
+                    fontSize: 7,
+                    color: cs.onSurface.withValues(alpha: 0.4),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
         if (widget.status == GoalStatus.inProgress)
           Positioned(
             bottom: 0,

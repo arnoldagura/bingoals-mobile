@@ -244,21 +244,35 @@ class BoardActions {
   }
 
   Future<void> deleteGoalMemory(
-      String boardId, int position, String memoryId) async {
+    String boardId,
+    int position,
+    String memoryId,
+  ) async {
     await _api.deleteGoalMemory(boardId, position, memoryId);
     _ref.invalidate(boardDetailProvider(boardId));
     _ref.invalidate(galleryProvider);
   }
 
   Future<void> setGoalBoardImage(
-      String boardId, int position, String memoryId) async {
-    await _api.updateGoalMemory(boardId, position, memoryId,
-        isBoardImage: true);
+    String boardId,
+    int position,
+    String memoryId,
+  ) async {
+    await _api.updateGoalMemory(
+      boardId,
+      position,
+      memoryId,
+      isBoardImage: true,
+    );
     _ref.invalidate(boardDetailProvider(boardId));
   }
 
   Future<void> updateGoalMemoryLabel(
-      String boardId, int position, String memoryId, String label) async {
+    String boardId,
+    int position,
+    String memoryId,
+    String label,
+  ) async {
     await _api.updateGoalMemory(boardId, position, memoryId, label: label);
     _ref.invalidate(boardDetailProvider(boardId));
     _ref.invalidate(galleryProvider);

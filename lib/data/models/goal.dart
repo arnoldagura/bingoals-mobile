@@ -45,6 +45,7 @@ class Goal {
   final List<GoalMemory> memories;
   final Reflection? reflection;
   final int completedByCount; // How many members completed this (shared boards only)
+  final int commentCount;     // Number of comments on this goal
 
   const Goal({
     required this.id,
@@ -65,6 +66,7 @@ class Goal {
     this.memories = const [],
     this.reflection,
     this.completedByCount = 0,
+    this.commentCount = 0,
   });
 
   bool get isEmpty => title == null || title!.isEmpty;
@@ -90,6 +92,7 @@ class Goal {
     List<GoalMemory>? memories,
     Reflection? reflection,
     int? completedByCount,
+    int? commentCount,
   }) {
     return Goal(
       id: id ?? this.id,
@@ -110,6 +113,7 @@ class Goal {
       memories: memories ?? this.memories,
       reflection: reflection ?? this.reflection,
       completedByCount: completedByCount ?? this.completedByCount,
+      commentCount: commentCount ?? this.commentCount,
     );
   }
 
@@ -174,6 +178,7 @@ class Goal {
           ? Reflection.fromJson(json['reflection'] as Map<String, dynamic>)
           : null,
       completedByCount: json['completedByCount'] as int? ?? 0,
+      commentCount: json['commentCount'] as int? ?? 0,
     );
   }
 }
